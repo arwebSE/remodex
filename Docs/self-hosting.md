@@ -55,16 +55,17 @@ What this does:
 
 - starts a local relay on your machine
 - starts the Koder bridge
-- starts the local web client on port `5173`
-- prints the browser URL, relay URL, pairing code, and QR bootstrap payload
+- starts the local web client on port `5173` over HTTPS
+- prints the browser URL, secure relay URL, pairing code, and QR bootstrap payload
 
 Then:
 
 1. Open the printed browser URL on your phone
-2. In the PWA, scan the QR from your Mac terminal. If live camera access is unavailable on that browser session, use the `Use photo` fallback or paste the printed relay URL and pairing code.
-3. Tap `Connect to Mac` if you used the manual pairing fields
-4. Start a thread and send a message
-5. On later launches, use the trusted reconnect buttons before pairing again
+2. If the browser warns that the local certificate is untrusted, trust it first. Otherwise the page still will not count as a secure camera origin.
+3. In the PWA, scan the QR from your Mac terminal. If live camera access is still unavailable on that browser session, use the `Use photo` fallback or paste the printed secure relay URL and pairing code.
+4. Tap `Connect to Mac` if you used the manual pairing fields
+5. Start a thread and send a message
+6. On later launches, use the trusted reconnect buttons before pairing again
 
 ### If your iPhone cannot reach the default hostname
 

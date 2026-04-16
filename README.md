@@ -62,7 +62,7 @@ That starts:
 - the local web client on port `5173`
 - pairing output for the browser PWA flow
 
-Open the printed browser URL on your phone, then scan the QR shown by the bridge. If live camera access is blocked on a LAN URL, use the photo capture fallback in the page or paste the printed relay URL and pairing code.
+Open the printed browser URL on your phone over HTTPS, then scan the QR shown by the bridge. The launcher now serves the PWA on a secure origin and exposes a matching `wss://.../relay` URL through that same origin. If your phone does not trust the temporary local certificate yet, the browser will still block live camera until you trust it or fall back to photo/manual pairing.
 
 ### npm Bridge Install
 

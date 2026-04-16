@@ -8,7 +8,7 @@ const client = new KoderClient();
 
 function App() {
   const [snapshot, setSnapshot] = useState<ClientSnapshot>(client.getSnapshot());
-  const [relayUrl, setRelayUrl] = useState(snapshot.connection.relayUrl || "ws://");
+  const [relayUrl, setRelayUrl] = useState(snapshot.connection.relayUrl || preferredRelayUrlFromPage() || "ws://");
   const [pairingCode, setPairingCode] = useState("");
   const [pairingPayloadText, setPairingPayloadText] = useState("");
   const [composerText, setComposerText] = useState("");
@@ -80,10 +80,15 @@ function App() {
 
       if (trimmedValue.startsWith("{")) {
         const payload = parsePairingPayload(trimmedValue);
-        setRelayUrl(payload.relay);
+        const resolvedRelayUrl = preferredRelayUrlFromPage() || payload.relay;
+        const securePayload = {
+          ...payload,
+          relay: resolvedRelayUrl,
+        };
+        setRelayUrl(resolvedRelayUrl);
         setPairingCode("");
-        setPairingPayloadText(trimmedValue);
-        await client.connectWithPairingPayload(payload);
+        setPairingPayloadText(JSON.stringify(securePayload));
+        await client.connectWithPairingPayload(securePayload);
         setPairingPayloadText("");
         return;
       }
@@ -366,7 +371,7 @@ function App() {
             </div>
             <ul className="bullet-list">
               <li>Run <code>./run-local-koder.sh --hostname &lt;your-mac-ip&gt;</code> on the Mac.</li>
-              <li>Scan the printed QR first. If live camera is unavailable on this origin, use the photo fallback or the printed relay URL and pairing code.</li>
+              <li>Scan the printed QR first. Koder will route the pairing through this page&apos;s secure relay origin when available.</li>
               <li>After one successful pair, reconnect comes from the saved trusted Mac record.</li>
             </ul>
           </section>
@@ -602,6 +607,20 @@ function statusTone(phase: ClientSnapshot["connection"]["phase"]): "good" | "war
     default:
       return "neutral";
   }
+}
+
+function preferredRelayUrlFromPage(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.host;
+  if (!host) {
+    return "";
+  }
+
+  return `${protocol}//${host}/relay`;
 }
 
 function messageLabel(message: ConversationMessage): string {
