@@ -128,5 +128,5 @@ If any provision of these Terms is found unenforceable, the remaining provisions
 If you have questions about these Terms, you can reach us at:
 
 - **Email:** emandipietro@gmail.com
-- **GitHub:** [github.com/Emanuele-web04/remodex](https://github.com/Emanuele-web04/remodex)
+- **GitHub:** [github.com/arwebSE/koder](https://github.com/arwebSE/koder)
 - **X (Twitter):** [@emanueledpt](https://x.com/emanueledpt)

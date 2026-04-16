@@ -1,6 +1,6 @@
-# Self-Hosting Remodex
+# Self-Hosting Koder
 
-This guide is for developers who clone the public GitHub repository and want to run Remodex on infrastructure they control.
+This guide is for developers who clone the public GitHub repository and want to run Koder on infrastructure they control.
 
 It covers two supported setups:
 
@@ -12,14 +12,14 @@ This document intentionally avoids any private hosted-service details. If you ar
 The public source tree is local-first and self-host friendly:
 
 - there is no public production relay baked into the GitHub source
-- local pairing should work out of the box with `./run-local-remodex.sh`
+- local pairing should work out of the box with `./run-local-koder.sh`
 - internet-facing setups should pass their own relay URL explicitly with `REMODEX_RELAY`
 - the first QR scan bootstraps trust, then later reconnects can reuse the same trusted Mac through that relay
 - the built-in background daemon for trusted reconnect is currently macOS-only
 
-## What Remodex Self-Hosting Means
+## What Koder Self-Hosting Means
 
-Remodex is local-first.
+Koder is local-first.
 
 That means:
 
@@ -38,7 +38,7 @@ This is the easiest way to try the public repo, but on iPhone it should be treat
 ### What you need
 
 - a Mac with Codex CLI installed
-- an iPhone with a Remodex build installed
+- an iPhone with a legacy Koder/Remodex reference build installed
 - both devices on the same local network
 
 ### Start everything locally
@@ -46,15 +46,15 @@ This is the easiest way to try the public repo, but on iPhone it should be treat
 From the repo root:
 
 ```sh
-git clone https://github.com/Emanuele-web04/remodex.git
-cd remodex
-./run-local-remodex.sh
+git clone https://github.com/arwebSE/koder.git
+cd koder
+./run-local-koder.sh
 ```
 
 What this does:
 
 - starts a local relay on your machine
-- starts the Remodex bridge
+- starts the Koder bridge
 - prints a pairing QR code for first-time trust bootstrap or recovery
 
 Then:
@@ -69,7 +69,7 @@ Then:
 Pass a hostname or IP address that the phone can actually reach:
 
 ```sh
-./run-local-remodex.sh --hostname 192.168.1.10
+./run-local-koder.sh --hostname 192.168.1.10
 ```
 
 ### Health check
@@ -98,24 +98,24 @@ This is also the best base for a Tailscale setup: the relay can live on a Mac, a
 
 On your VPS:
 
-- the Remodex relay
+- the Koder relay
 
 On your Mac:
 
-- the Remodex bridge
+- the Koder bridge
 - Codex CLI / `codex app-server`
 
 On your iPhone:
 
-- the Remodex app
+- the Koder client
 
 ### Start the relay on the VPS
 
 From the public repo:
 
 ```sh
-git clone https://github.com/Emanuele-web04/remodex.git
-cd remodex/relay
+git clone https://github.com/arwebSE/koder.git
+cd koder/relay
 npm install
 npm start
 ```
@@ -152,7 +152,7 @@ If you use a shared-domain subpath, make sure your reverse proxy strips the pref
 On the Mac that runs the bridge:
 
 ```sh
-REMODEX_RELAY="wss://relay.example.com/relay" remodex up
+REMODEX_RELAY="wss://relay.example.com/relay" koder up
 ```
 
 Or, if you are running from source:
@@ -176,7 +176,7 @@ After the first successful scan:
 
 Today, that background-service path is built in for macOS. If you self-host against a non-macOS bridge, pairing and relay routing still work, but you must manage persistence/background service behavior yourself.
 
-If you install the bridge from npm and do not use the local launcher, make sure you export `REMODEX_RELAY` before running `remodex up`.
+If you install the bridge from npm and do not use the local launcher, make sure you export `REMODEX_RELAY` before running `koder up`.
 
 ## Push Notifications
 
@@ -184,7 +184,7 @@ Managed push is optional.
 
 For public self-hosting:
 
-- you do not need push to use Remodex
+- you do not need push to use Koder
 - local in-app and local-device flows can still work without it
 - the relay keeps push endpoints disabled by default
 
@@ -231,7 +231,7 @@ Check:
 Try a concrete LAN IP:
 
 ```sh
-./run-local-remodex.sh --hostname 192.168.1.10
+./run-local-koder.sh --hostname 192.168.1.10
 ```
 
 If local LAN pairing still fails on iPhone even though the relay health check works, prefer a Tailscale-reachable relay instead of continuing to rely on plain `ws://` over the same Wi-Fi.

@@ -1,4 +1,4 @@
-# Contributing to Remodex
+# Contributing to Koder
 
 I am not actively accepting contributions right now.
 
@@ -41,17 +41,17 @@ Opening a PR does not create an obligation on my side. I may close it. I may ign
 - **[Codex desktop app](https://openai.com/index/codex/)** (optional — for viewing threads on Mac)
 - **macOS** (required for desktop refresh; core bridge works on any OS)
 - **Xcode 16+** (only for building the iOS app)
-- **iPhone** with the Remodex app (or built from source)
+- **iPhone** with the legacy reference app if you are still testing the old mobile path
 
 ### Bridge setup
 
 ```sh
 # Clone the repo
-git clone https://github.com/Emanuele-web04/remodex.git
-cd remodex
+git clone https://github.com/arwebSE/koder.git
+cd koder
 
 # Start a local relay + bridge together
-./run-local-remodex.sh
+./run-local-koder.sh
 ```
 
 This launcher:
@@ -68,13 +68,13 @@ npm install
 REMODEX_RELAY="ws://localhost:9000/relay" npm start
 ```
 
-That runs `remodex up`, which:
+That runs `koder up`, which:
 1. Spawns a Codex `app-server` process
 2. Connects to the configured relay
 3. On macOS, starts the built-in background bridge service
 4. Prints a QR code in your terminal when first-time pairing or recovery is needed
 
-Scan the QR code with the Remodex iOS app to trust that Mac.
+Scan the QR code with the current client flow or the legacy iOS reference app to trust that Mac.
 
 ### iOS app setup
 
@@ -91,7 +91,7 @@ The app uses SwiftUI and the current project target is iOS 18.6. No CocoaPods or
 
 ### Testing a full local session
 
-1. Start the local launcher: `./run-local-remodex.sh`
+1. Start the local launcher: `./run-local-koder.sh`
 2. Open the iOS app and scan the QR code
 3. Create a new thread from the app
 4. Send a message — you should see Codex respond in real-time
@@ -161,5 +161,5 @@ remodex/
 - The first QR pairing is possession-based: it contains the relay URL and a live session ID.
 - After that first handshake, the iPhone stores a trusted Mac record and can ask the relay for the Mac's current live session again.
 - Set `REMODEX_RELAY` to a relay you control when you are not using the local launcher. Use `wss://` when you want TLS in transit.
-- Remodex uses an authenticated end-to-end encrypted transport after pairing completes. The relay code is public for inspection, but deployed relay details should stay in private config.
+- Koder uses an authenticated end-to-end encrypted transport after pairing completes. The relay code is public for inspection, but deployed relay details should stay in private config.
 - The built-in daemon / background service path is currently macOS-only. Linux and Windows can still run the bridge, but contributors should treat the daemon logic as platform-specific.

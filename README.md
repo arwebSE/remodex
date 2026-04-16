@@ -1,10 +1,9 @@
 <p align="center">
-  <img src="CodexMobile/CodexMobile/Assets.xcassets/remodex-og1.imageset/remodex-og2%20%281%29.png" alt="Koder" />
+  <img src="assets/koder-mark.svg" alt="Koder" />
 </p>
 
 # Koder
 
-[![npm version](https://img.shields.io/npm/v/remodex)](https://www.npmjs.com/package/remodex)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 
 Koder is a local-first remote client for [Codex](https://openai.com/index/codex/). The long-term product direction is **web-first**: the active client rewrite lives in [`web/`](web/), while the Node bridge and relay continue to be the operational core that talks to your local Codex runtime.
@@ -53,7 +52,7 @@ See [Docs/KODER_PRODUCT_SPEC.md](Docs/KODER_PRODUCT_SPEC.md) for the current wor
 ```sh
 git clone https://github.com/arwebSE/koder.git
 cd koder
-./run-local-remodex.sh
+./run-local-koder.sh
 ```
 
 That starts:
@@ -79,7 +78,7 @@ npm install -g remodex@latest
 koder up
 ```
 
-Legacy `remodex up` still works too.
+The legacy CLI alias still works too.
 
 ## Architecture
 

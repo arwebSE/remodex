@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" aria-label="Koder">
+  <defs>
+    <linearGradient id="koderGradient" x1="120" y1="40" x2="840" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff9f43"/>
+      <stop offset="0.48" stop-color="#7cf7d4"/>
+      <stop offset="1" stop-color="#6b7bff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="320" rx="56" fill="#07101d"/>
+  <rect x="28" y="28" width="904" height="264" rx="40" fill="none" stroke="url(#koderGradient)" stroke-width="4" opacity="0.5"/>
+  <path d="M130 88h58v49l68-49h72l-90 68 96 78h-74l-72-53v53h-58V88Z" fill="url(#koderGradient)"/>
+  <text x="380" y="138" fill="#f5f8ff" font-family="Aptos, Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="64" font-weight="700" letter-spacing="3">Koder</text>
+  <text x="382" y="186" fill="#9fb2d3" font-family="Aptos, Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="18" letter-spacing="5">WEB-FIRST LOCAL CODING CLIENT</text>
+</svg>
