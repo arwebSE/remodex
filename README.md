@@ -6,138 +6,63 @@
 
 [![npm version](https://img.shields.io/npm/v/remodex)](https://www.npmjs.com/package/remodex)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
-[Follow on X](https://x.com/emanueledpt)
 
-Control [Codex](https://openai.com/index/codex/) from a browser-first client backed by a local bridge on your Mac. Koder is shifting to a web-first, local-first architecture: the new React/PWA client lives in [`web/`](web/), while the existing iOS app remains in the repo as a reference implementation during the transition.
+Koder is a local-first remote client for [Codex](https://openai.com/index/codex/). The long-term product direction is **web-first**: the active client rewrite lives in [`web/`](web/), while the Node bridge and relay continue to be the operational core that talks to your local Codex runtime.
 
-## Key App Features
+## Status
 
-- End-to-end encrypted pairing and chats between your iPhone and Mac
-- Fast mode for lower-latency turns
-- Plan mode for structured planning before execution
-- Subagents from iPhone with the `/subagents` command
-- Steer active runs without starting over
-- Queue follow-up prompts while a turn is still running
-- In-app notifications when turns finish or need attention
-- Git actions from your phone, including commit, push, pull, and branch switching
-- Reasoning controls to tune how much thinking Codex uses
-- Access controls with On-Request or Full access
-- Photo attachments from camera or library
-- One-time QR bootstrap with trusted Mac reconnects
-- macOS-only background bridge service via `launchd`
-- Live streaming on your phone while Codex runs on your Mac
-- Shared thread history with Codex on your Mac
+Be precise about the current state:
 
-The repo stays local-first and self-host friendly: the bridge, relay, and new web client are all inspectable and self-hostable, and the transport layer remains visible for anyone who wants to run their own setup.
+- `web/` is the new primary direction and already contains a React + Vite + TypeScript PWA scaffold.
+- `phodex-bridge/` and `relay/` are the working backend pieces that drive pairing, session routing, and the local Codex bridge.
+- `CodexMobile/` is still in the repo as a **legacy reference client**, not the future product direction.
 
-Today, the background daemon / trusted auto-reconnect flow is implemented for macOS. Self-hosted relay setups still work on other OSes, but they currently use the foreground bridge flow instead of the macOS `launchd` service path.
+That means Koder is **web-first in roadmap and branding**, but the browser client is not fully wired into the bridge/relay flow yet.
 
-If you want the public-repo distribution model explained clearly, read [SELF_HOSTING_MODEL.md](SELF_HOSTING_MODEL.md).
+## Product Model
 
-> **I am very early in this project. Expect bugs.**
->
-> I am not actively accepting contributions yet. If you still want to help, read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+Koder is being split into two clear paths:
 
-## Web Client
+- **Koder OSS**: self-hosted bridge, relay, and web client are free.
+- **Koder Cloud**: the hosted web app and hosted infrastructure are the paid offering.
 
-The new primary client direction is the web/PWA app in [`web/`](web/).
+Rules:
 
-Run it locally with:
+- self-hosted usage should stay fully usable and free
+- monetization belongs in hosted web/backend layers, not in the open protocol
+- the current plan is mild hosted-only annoyware for free cloud users, not a hard product lock
 
-```sh
-cd web
-npm install
-npm run dev
+See [Docs/KODER_PRODUCT_SPEC.md](Docs/KODER_PRODUCT_SPEC.md) for the current working direction.
+
+## Repository Layout
+
+```text
+.
+├── phodex-bridge/   Node bridge package and CLI (`koder`, legacy `remodex`)
+├── relay/           Self-hostable relay and optional push service
+├── web/             React + Vite + TypeScript PWA client scaffold
+├── CodexMobile/     Legacy iOS reference client
+├── Docs/            Product notes and self-hosting docs
+└── Legal/           Privacy policy and terms from the older app era
 ```
-
-The current scaffold is UI-only for now, but it establishes the new browser-first shell, PWA manifest, and the surface where hosted vs self-hosted logic will land.
-
-## Legacy iOS Client
-
-The older iOS app is still in the repo as a transition reference. If you want to inspect or build that path, the previous App Store build is still [listed here](https://apps.apple.com/us/app/remodex-remote-ai-coding/id6760243963), and you can still pair it by scanning the QR from `koder up`.
-
-## Architecture
-
-```
-┌──────────────┐       Paired session   ┌───────────────┐       stdin/stdout       ┌─────────────┐
-│  Koder Web   │ ◄────────────────────► │ koder (Mac)  │ ◄──────────────────────► │ codex       │
-│  / legacy iOS│    WebSocket bridge    │ bridge        │    JSON-RPC              │ app-server  │
-└──────────────┘                        └───────────────┘                          └─────────────┘
-                                               │                                         │
-                                               │  AppleScript route bounce                │ JSONL rollout
-                                               ▼                                         ▼
-                                        ┌─────────────┐                           ┌─────────────┐
-                                        │  Codex.app  │ ◄─── reads from ──────── │  ~/.codex/  │
-                                        │  (desktop)  │      disk on navigate     │  sessions   │
-                                        └─────────────┘                           └─────────────┘
-```
-
-1. Run `koder up` on your Mac
-2. On macOS, Koder installs/starts a lightweight background bridge service and prints a QR for first-time pairing or recovery
-3. Use the web client or legacy iOS app to pair to that Mac
-4. After the first handshake, the client can resolve the Mac's live session through the configured relay and reconnect automatically
-5. Your client sends instructions to Codex through the bridge and receives responses in real-time
-6. The bridge handles git operations and local session persistence on your Mac
-7. `Codex.app` can read the same thread history from disk, but it is not a true live mirror unless you enable the optional refresh workaround
-
-## Repository Structure
-
-This repo now contains the local bridge, relay, the new web client, and the older iOS reference app:
-
-```
-├── phodex-bridge/                # Node.js bridge package used by `koder`
-│   ├── bin/                      # CLI entrypoints
-│   └── src/                      # Bridge runtime, git/workspace handlers, refresh helpers
-├── web/                          # React + Vite + TypeScript PWA client scaffold
-│   ├── public/                   # Manifest, service worker, and icons
-│   └── src/                      # Browser-first Koder app shell
-├── CodexMobile/                  # Xcode project root
-│   ├── CodexMobile/              # App source target
-│   │   ├── Services/             # Connection, sync, incoming-event, git, and persistence logic
-│   │   ├── Views/                # SwiftUI screens and timeline/sidebar components
-│   │   ├── Models/               # RPC, thread, message, and UI models
-│   │   └── Assets.xcassets/      # App icons and UI assets
-│   ├── CodexMobileTests/         # Unit tests
-│   ├── CodexMobileUITests/       # UI tests
-│   └── BuildSupport/             # Info.plist, xcconfig defaults, and local override templates
-```
-
-## Prerequisites
-
-- **Node.js** v18+
-- **[Codex CLI](https://github.com/openai/codex)** installed and in your PATH
-- **[Codex desktop app](https://openai.com/index/codex/)** (optional — for viewing threads on your Mac)
-- **npm** (for the web client scaffold)
-- **macOS** (for desktop refresh features — the core bridge works on any OS)
-- **Xcode 16+** (only if you are still building the legacy iOS app from source)
-
-## Install the Bridge
-
-<sub>Install from npm with `@latest` so you get the newest bridge fixes.</sub>
-
-If you plan to use the macOS menu bar companion, `koder` is the preferred command and `remodex` remains available as a legacy alias. The package still installs globally under `remodex`, so it must be available in your login-shell `PATH`.
-
-```sh
-npm install -g remodex@latest
-```
-
-To update an existing global install later:
-
-```sh
-npm install -g remodex@latest
-```
-
-If you only want to try Koder, you can install it from npm and run it without cloning this repository.
 
 ## Quick Start
 
-Install the bridge, then run:
+### Source Checkout
 
 ```sh
-koder up
+git clone https://github.com/arwebSE/koder.git
+cd koder
+./run-local-remodex.sh
 ```
 
-In parallel, start the web client:
+That starts:
+
+- a local relay
+- the local bridge
+- QR/bootstrap output for the current bridge flow
+
+To run the new web client scaffold in parallel:
 
 ```sh
 cd web
@@ -145,361 +70,126 @@ npm install
 npm run dev
 ```
 
-On first connect, open the web client or the legacy iOS app and follow the pairing flow.
+### npm Bridge Install
 
-After that first scan:
-
-- the iPhone saves the Mac as a trusted device
-- the Mac bridge keeps its identity locally
-- the app tries trusted reconnect automatically on later launches
-- the QR remains available as a recovery path if trust changes or the relay cannot resolve the live session
-
-For now, the daemon-backed trusted reconnect path is macOS-only. If you self-host on Linux or Windows, pairing still works, but the bridge runs in the foreground unless you set up your own OS-specific service wrapper.
-
-## Run Locally
+The package is still published under `remodex` during the transition, but it exposes a `koder` command alias.
 
 ```sh
-git clone https://github.com/Emanuele-web04/remodex.git
-cd remodex
-./run-local-remodex.sh
-```
-
-That launcher starts a local relay, points the bridge at `ws://<your-host>:9000/relay`, and prints the pairing QR for the iPhone app.
-
-For iPhone self-hosting, the recommended path is Tailscale or another stable private network. Plain LAN pairing over `ws://<lan-ip>` on the same Wi-Fi is still available for local testing, but it can be unreliable on some iOS devices even when the relay and Wi-Fi are healthy.
-
-Options:
-
-- `./run-local-remodex.sh --hostname <lan-hostname-or-ip>`
-- `./run-local-remodex.sh --bind-host 127.0.0.1 --port 9100`
-
-If your iPhone is pairing over LAN, use a hostname or IP the phone can actually reach.
-
-## Custom Relay Endpoint
-
-For a full public self-hosting walkthrough, see [`Docs/self-hosting.md`](Docs/self-hosting.md).
-
-If you want the npm bridge to point at your own setup instead of the package default, override `REMODEX_RELAY` explicitly:
-
-```sh
-REMODEX_RELAY="ws://localhost:9000/relay" koder up
-```
-
-For self-hosted iPhone usage, prefer a relay URL reachable over Tailscale or another stable private network. Treat plain local `ws://192.168.x.x` pairing as best-effort rather than the recommended production path on iOS.
-
-A common private setup looks like this:
-
-1. Run the relay on your Mac, a mini server, or a VPS you control
-2. Put that machine on Tailscale
-3. Set `REMODEX_RELAY` to the Tailscale-reachable `ws://` or `wss://` relay URL
-4. Pair once with QR
-5. Let the iPhone reconnect to the same trusted Mac over that relay later
-
-If that relay is fronting a Mac bridge, the macOS daemon can keep the bridge alive for hands-free reconnects. If you self-host against a non-macOS bridge, the same relay path still works, but automatic background service management is not built in yet.
-
-Reverse-proxy subpaths work too, so a hosted relay behind Traefik can live under the same domain as other APIs:
-
-```sh
-REMODEX_RELAY="wss://api.example.com/remodex/relay" koder up
-```
-
-In that setup, the public endpoints can look like this:
-
-- `wss://api.example.com/remodex/relay`
-- `https://api.example.com/remodex/v1/push/session/register-device`
-- `https://api.example.com/remodex/v1/push/session/notify-completion`
-
-Have the proxy strip `/remodex` before forwarding so the relay still receives `/relay/...` and `/v1/push/...`.
-
-If you point `REMODEX_RELAY` at your own self-hosted relay, managed push stays off unless you also set `REMODEX_PUSH_SERVICE_URL` on the bridge and explicitly enable push on the relay.
-
-## Publish to npm
-
-Published npm packages can embed default private relay settings at pack time via the `prepack` script.
-
-The current package version is `1.3.4`.
-
-To publish the bridge with `api.phodex.app` as the default relay:
-
-```sh
-cd phodex-bridge
-npm login
-REMODEX_PACKAGE_DEFAULT_RELAY_URL="wss://api.phodex.app/relay" \
-npm publish
-```
-
-After publish, users can still override the packaged default at runtime with `REMODEX_RELAY`.
-
-You can also run the bridge from source:
-
-```sh
-cd phodex-bridge
-npm install
-REMODEX_RELAY="ws://localhost:9000/relay" npm start
-```
-
-## Commands
-
-The `remodex` command remains supported as a legacy alias, but `koder` is the preferred name everywhere below.
-
-### `koder up`
-
-Starts Koder.
-
-On macOS, `koder up` is the friendly entrypoint for the background bridge service:
-
-- Writes the daemon config used by the `launchd` service
-- Starts or restarts the background bridge service
-- Waits for a pairing payload and prints a QR for first-time trust or recovery
-- Keeps the bridge alive even if you close the terminal later
-
-On non-macOS platforms, `koder up` runs the bridge in the foreground.
-
-In both cases the bridge:
-
-- Spawns `codex app-server` (or connects to an existing endpoint)
-- Connects the Mac bridge to the configured relay
-- Forwards JSON-RPC messages bidirectionally
-- Handles git commands from the phone
-- Persists the active thread for later resumption
-
-### `koder start`
-
-macOS only. Starts the background bridge service without waiting for or printing a QR in the current terminal.
-If the service is already loaded, this path refreshes it in place.
-
-### `koder restart`
-
-macOS only. Explicitly restarts the background bridge service without waiting for or printing a QR in the current terminal.
-
-### `koder stop`
-
-macOS only. Stops the background bridge service and clears its transient runtime status.
-
-### `koder status`
-
-macOS only. Prints the current `launchd` / bridge status, including whether the service is loaded and whether a recent pairing payload exists.
-
-### `koder run-service`
-
-macOS only. Internal service entrypoint used by `launchd`. You normally do not run this manually.
-
-### `koder --version`
-
-Prints the installed Koder CLI version.
-
-```sh
-koder --version
-# => 1.3.4
-```
-
-### `koder reset-pairing`
-
-Clears the saved bridge pairing state so the next trusted connection requires a fresh QR bootstrap again.
-You normally do not need this for corrupted local state anymore: recent Koder builds auto-repair unreadable pairing files/mirrors on startup.
-
-```sh
-koder reset-pairing
-# => [koder] Cleared the saved pairing state. Run `koder up` to pair again.
-```
-
-### `koder resume`
-
-Reopens the last active thread in Codex.app on your Mac.
-
-```sh
-koder resume
-# => [koder] Opened last active thread: abc-123 (phone)
-```
-
-### `koder watch [threadId]`
-
-Tails the event log for a thread in real-time.
-
-```sh
-koder watch
-# => [14:32:01] Phone: "Fix the login bug in auth.ts"
-# => [14:32:05] Codex: "I'll look at auth.ts and fix the login..."
-# => [14:32:18] Task started
-# => [14:33:42] Task complete
-```
-
-## Environment Variables
-
-`REMODEX_RELAY` is optional, but the default depends on how you got Koder:
-
-- public GitHub/source checkouts stay open-source and self-host friendly, so they do not ship with a hosted relay baked in
-- official published packages may include a default relay at publish time
-- if you are running from source, assume you should use `./run-local-remodex.sh` or set `REMODEX_RELAY` yourself
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `REMODEX_RELAY` | empty in source checkouts; optional in published packages | Session base URL used for QR bootstrap, trusted-session resolve, and phone/Mac session routing |
-| `REMODEX_PUSH_SERVICE_URL` | disabled by default | Optional HTTP base URL for managed push registration/completion |
-| `REMODEX_CODEX_ENDPOINT` | — | Connect to an existing Codex WebSocket instead of spawning a local `codex app-server` |
-| `REMODEX_REFRESH_ENABLED` | `false` | Auto-refresh Codex.app when phone activity is detected (`true` enables it explicitly) |
-| `REMODEX_REFRESH_DEBOUNCE_MS` | `1200` | Debounce window (ms) for coalescing refresh events |
-| `REMODEX_REFRESH_COMMAND` | — | Custom shell command to run instead of the built-in AppleScript refresh |
-| `REMODEX_CODEX_BUNDLE_ID` | `com.openai.codex` | macOS bundle ID of the Codex app |
-| `CODEX_HOME` | `~/.codex` | Codex data directory (used here for `sessions/` rollout files) |
-
-```sh
-# Enable desktop refresh explicitly
-REMODEX_REFRESH_ENABLED=true koder up
-
-# Connect to an existing Codex instance
-REMODEX_CODEX_ENDPOINT=ws://localhost:8080 koder up
-
-# Use a custom self-hosted relay endpoint (`ws://` is unencrypted)
-REMODEX_RELAY="ws://localhost:9000/relay" koder up
-
-# Enable managed push only if your self-hosted relay also exposes a configured APNs push service
-REMODEX_RELAY="wss://relay.example/relay" \
-REMODEX_PUSH_SERVICE_URL="https://relay.example" \
+npm install -g remodex@latest
 koder up
 ```
 
-On the relay/VPS side, keep push disabled until you actually want it. The HTTP push endpoints are off by default and only turn on when you set `REMODEX_ENABLE_PUSH_SERVICE=true`.
+Legacy `remodex up` still works too.
 
-## Pairing and Safety
+## Architecture
 
-- Koder is local-first: Codex, git operations, and workspace actions run on your Mac, while the iPhone acts as a paired remote control.
-- On iPhone, the most reliable self-host setup is a Tailscale-reachable relay. Plain LAN pairing over `ws://` on the same Wi-Fi can fail on some iOS devices because local-network routing from the app is not always reliable.
-- The pairing QR carries the connection URL, the session ID, and the bridge identity key used to bootstrap end-to-end encryption. After a successful first scan, the iPhone stores a trusted Mac record in Keychain and the bridge persists its trusted phone identity locally on the Mac.
-- On macOS, the bridge can keep running as a lightweight `launchd` service, so the phone can resolve the Mac's current live relay session and reconnect without scanning a new QR every time.
-- The QR is still the recovery path when trust changes, the bridge identity rotates, or the relay cannot resolve the current live session.
-- The bridge state lives canonically in `~/.remodex/device-state.json` with local-only permissions. On macOS the bridge also mirrors that state to Keychain as best-effort backup/migration data, and recent builds auto-repair unreadable local state on startup instead of requiring manual cleanup.
-- The CLI no longer prints the connection URL in plain text below the QR.
-- Set `REMODEX_RELAY` only when you want to self-host or test locally against your own setup.
-- Leave `REMODEX_TRUST_PROXY` unset for direct/self-hosted installs. Turn it on only when a trusted reverse proxy such as Traefik, Nginx, or Caddy is forwarding the relay traffic.
-- The transport implementation is public in [`relay/`](relay/), but your real deployed hostname and credentials should stay private.
-- On the iPhone, the default agent permission mode is `On-Request`. Switching the app to `Full access` auto-approves runtime approval prompts from the agent.
+```text
+┌──────────────┐      paired session      ┌───────────────┐      JSON-RPC / stdio      ┌─────────────┐
+│  Koder Web   │ ◄──────────────────────► │ koder bridge  │ ◄────────────────────────► │ codex       │
+│  / legacy iOS│      via relay           │ on your Mac   │                             │ app-server  │
+└──────────────┘                          └───────────────┘                             └─────────────┘
+                                                  │
+                                                  ▼
+                                           ┌─────────────┐
+                                           │  relay      │
+                                           │  transport  │
+                                           └─────────────┘
+```
 
-## Security and Privacy
+Core properties:
 
-Koder now uses an authenticated end-to-end encrypted channel between the paired iPhone and the bridge running on your Mac. The transport layer still carries the WebSocket traffic, but it does not get the plaintext contents of prompts, tool calls, Codex responses, git output, or workspace RPC payloads once the secure session is established.
+- Codex runs on the user's machine
+- git and workspace operations run on the user's machine
+- the relay is a transport layer, not the runtime
+- session transport is designed for self-hosting
 
-The secure channel is built in these steps:
+## Commands
 
-1. The bridge generates and persists a long-term device identity keypair on the Mac.
-2. The pairing QR shares the connection URL, session ID, bridge device ID, bridge identity public key, and a short expiry window.
-3. During pairing, the iPhone and bridge exchange fresh X25519 ephemeral keys and nonces.
-4. The bridge signs the handshake transcript with its Ed25519 identity key, and the iPhone verifies that signature against the public key from the QR code or the previously trusted Mac record.
-5. The iPhone signs a client-auth transcript with its own Ed25519 identity key, and the bridge verifies that before accepting the session.
-6. Both sides derive directional AES-256-GCM keys with HKDF-SHA256 and then wrap application messages in encrypted envelopes with monotonic counters for replay protection.
+The preferred CLI name is `koder`.
 
-Privacy notes:
+- `koder up`
+  Starts the bridge. On macOS it uses the background service path; on other platforms it runs in the foreground.
+- `koder run`
+  Runs the bridge in the foreground.
+- `koder start`
+  macOS only. Starts the background bridge service without waiting for a QR in the current terminal.
+- `koder restart`
+  macOS only. Restarts the background bridge service.
+- `koder stop`
+  macOS only. Stops the background bridge service.
+- `koder status`
+  macOS only. Prints service and pairing status.
+- `koder run-service`
+  macOS only. Internal `launchd` service entrypoint.
+- `koder reset-pairing`
+  Clears saved pairing state so the next connection requires a fresh QR/bootstrap.
+- `koder resume`
+  Reopens the last active thread in `Codex.app`.
+- `koder watch [threadId]`
+  Tails a thread rollout in real time.
+- `koder --version`
+  Prints the installed bridge version.
 
-- The transport layer can still see connection metadata and the plaintext secure control messages used to set up the encrypted session, including session IDs, device IDs, public keys, nonces, and handshake result codes.
-- The transport layer does not see decrypted application payloads after the secure handshake succeeds.
-- A fresh QR scan can replace the previously trusted iPhone automatically. Use `koder reset-pairing` only when you intentionally want to wipe the remembered pairing state yourself.
-- On-device message history is also encrypted at rest on iPhone using a Keychain-backed AES key.
+## Environment
 
-## Git Integration
+Important variables:
 
-The bridge intercepts `git/*` JSON-RPC calls from the phone and executes them locally:
+| Variable | Purpose |
+| --- | --- |
+| `REMODEX_RELAY` | Relay URL for bridge session routing |
+| `REMODEX_ADVERTISED_RELAY` | Relay URL advertised to clients when the bridge connects on a different local socket |
+| `REMODEX_PUSH_SERVICE_URL` | Optional push HTTP base URL |
+| `REMODEX_CODEX_ENDPOINT` | Connect to an existing Codex WebSocket instead of spawning `codex app-server` |
+| `REMODEX_REFRESH_ENABLED` | Enables the desktop refresh workaround |
+| `REMODEX_REFRESH_DEBOUNCE_MS` | Debounce window for refresh events |
+| `REMODEX_REFRESH_COMMAND` | Custom refresh command |
+| `REMODEX_CODEX_BUNDLE_ID` | Bundle ID for the Codex desktop app |
+| `CODEX_HOME` | Codex data directory |
 
-| Command | Description |
-|---------|-------------|
-| `git/status` | Branch, tracking info, dirty state, file list, and diff |
-| `git/commit` | Commit staged changes with an optional message |
-| `git/push` | Push to remote |
-| `git/pull` | Pull from remote (auto-aborts on conflict) |
-| `git/branches` | List all branches with current/default markers |
-| `git/checkout` | Switch branches |
-| `git/createBranch` | Create and switch to a new branch |
-| `git/log` | Recent commit history |
-| `git/stash` | Stash working changes |
-| `git/stashPop` | Pop the latest stash |
-| `git/resetToRemote` | Hard reset to remote (requires confirmation) |
-| `git/remoteUrl` | Get the remote URL and owner/repo |
-
-## Workspace Integration
-
-The bridge also handles local workspace-scoped revert operations for the assistant revert flow:
-
-| Command | Description |
-|---------|-------------|
-| `workspace/revertPatchPreview` | Checks whether a reverse patch can be applied cleanly in the local repo |
-| `workspace/revertPatchApply` | Applies the reverse patch locally when the preview succeeds |
-
-## Codex Desktop App Integration
-
-Koder works with both the Codex CLI and the Codex desktop app (`Codex.app`). Under the hood, the bridge spawns a `codex app-server` process — the same JSON-RPC interface that powers the desktop app and IDE extensions. Conversations are persisted as JSONL rollout files under `~/.codex/sessions`, so threads started from your phone show up in the desktop app too.
-
-What is live today:
-
-- The iPhone conversation is live while the bridge session is connected.
-- The Mac-side Codex runtime is the real runtime doing the work.
-
-What is not fully live today:
-
-- `Codex.app` does not act like a second live subscriber to the active run by default.
-- The desktop app catches up from the persisted session files and can be nudged with the optional refresh workaround below.
-- True phone-to-desktop live sync in the `Codex.app` GUI is not supported today.
-
-To make that limitation more practical, Koder also includes a hand-off button in the iPhone app. It lets you explicitly continue the current chat on your Mac by opening the matching thread in `Codex.app` when you are ready to switch devices.
-
-**Known limitation**: The Codex desktop app does not live-reload when an external `app-server` process writes new data to disk. Threads created or updated from your phone won't appear in the desktop app until it remounts that route. Koder keeps desktop refresh off by default for now because the current deep-link bounce is still disruptive. You can still enable it manually if you want the old remount workaround.
+Examples:
 
 ```sh
-# Enable the old deep-link refresh workaround manually
+# Self-hosted relay
+REMODEX_RELAY="ws://localhost:9000/relay" koder up
+
+# Existing Codex instance
+REMODEX_CODEX_ENDPOINT="ws://localhost:8080" koder up
+
+# Desktop refresh workaround
 REMODEX_REFRESH_ENABLED=true koder up
 ```
 
-This triggers a debounced deep-link bounce (`codex://settings` → `codex://threads/<id>`) that forces the desktop app to remount the current thread without interrupting any running tasks. While a turn is running, Koder also watches the persisted rollout for that thread and issues occasional throttled refreshes so long responses become visible on Mac without a full app relaunch. If the local desktop path is unavailable, the bridge self-disables desktop refresh for the rest of that run instead of retrying noisily forever.
+## Security Notes
 
-## Connection Resilience
+- Koder is local-first: runtime, git, and workspace operations stay on the user's machine.
+- The relay code is public and self-hostable.
+- The transport is designed so the relay does not need plaintext application payloads after the secure session is established.
+- Avoid hardcoding hosted domains into the open-source path.
+- For the tightest trust model, run the relay yourself.
 
-- **Auto-reconnect**: If the session connection drops, the bridge reconnects with exponential backoff (1 s → 5 s max)
-- **Secure catch-up**: The bridge keeps a bounded local outbound buffer and re-sends missed encrypted messages after a secure reconnect
-- **Codex persistence**: The Codex process stays alive across transient session reconnects during the current bridge run
-- **Graceful shutdown**: SIGINT/SIGTERM cleanly close all connections
+## Self-Hosting
 
-## Building the iOS App
+For the full self-hosting flow, see [Docs/self-hosting.md](Docs/self-hosting.md).
 
-```sh
-cd CodexMobile
-open CodexMobile.xcodeproj
-```
+The short version:
 
-Build and run on a physical device or simulator with Xcode. The app uses SwiftUI and the current project target is iOS 18.6.
+1. run your own relay
+2. point the bridge at it with `REMODEX_RELAY`
+3. keep hosted assumptions out of the OSS path
+
+## Legacy iOS Client
+
+`CodexMobile/` remains in the repo for protocol reference and migration support. It is no longer the product direction. If you touch it, treat it as compatibility/legacy work unless the user explicitly wants iOS changes.
 
 ## Contributing
 
-I'm not actively accepting contributions yet. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+This repo is still in active transition. Keep changes pragmatic:
 
-## FAQ
+- preserve self-hosted behavior
+- keep docs honest about what is working today
+- avoid reintroducing hardcoded hosted-service assumptions
 
-**Do I need an OpenAI API key?**
-Not for Koder itself. You need Codex CLI set up and working independently.
-
-**Does this work on Linux/Windows?**
-The core bridge client (Codex forwarding + git) works on any OS. Desktop refresh (AppleScript) is macOS-only, and the built-in daemon / trusted auto-reconnect service path is currently macOS-only too.
-
-**What happens if I close the terminal?**
-On macOS, the bridge can keep running in the background through `launchd`, so closing the terminal does not stop the trusted reconnect path. On other OSes, the foreground bridge stops when the terminal stops.
-
-**How do I force a fresh QR pairing?**
-Run `koder reset-pairing`, then start the bridge again with `koder up`. You should only need this when you intentionally want to replace the paired iPhone or wipe the remembered pairing.
-
-**Can I connect to a remote Codex instance?**
-Yes — set `REMODEX_CODEX_ENDPOINT=ws://host:port` to skip spawning a local `codex app-server`.
-
-**Why don't my phone threads show up in the Codex desktop app immediately?**
-The desktop app reads session data from disk (`~/.codex/sessions`) but doesn't live-reload when an external process writes new data. Your phone still gets the live stream; it is the desktop GUI that lags unless you explicitly enable the refresh workaround with `REMODEX_REFRESH_ENABLED=true`.
-
-**Does Koder support true live sync between phone and `Codex.app`?**
-No. The phone session is live, but the `Codex.app` GUI is not a true live mirror of the active run. To help with that, the iPhone app includes a `Hand off to Mac app` button so you can explicitly continue the same thread on your Mac.
-
-**Can I self-host the relay?**
-Yes. That is the intended forking path. The transport and push-service code are in [`relay/`](relay/); point `REMODEX_RELAY` at the instance you run.
-
-**Can I use Tailscale?**
-Yes. It is the recommended private-network option for self-hosting on iPhone. Run your relay somewhere reachable over Tailscale, set `REMODEX_RELAY` to that relay URL, pair once with QR, then let the app reconnect to the trusted Mac through the same relay.
-
-**Is the transport layer safe for sensitive work?**
-It is much stronger than a plain text proxy: traffic can be protected in transit with TLS, application payloads are end-to-end encrypted after the secure handshake, and all Codex execution still happens on your Mac. The transport can still observe connection metadata and handshake control messages, so the tightest trust model is to run it yourself.
+Read [AGENTS.md](AGENTS.md) before making broad repo changes.
 
 ## License
 

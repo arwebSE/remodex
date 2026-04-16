@@ -1,52 +1,88 @@
-# AGENTS.md (Local-First)
+# AGENTS.md
 
-Keep this file and `CLAUDE.md` aligned.
+This is the single repo-local agent guidance file for this project. Do not recreate `CLAUDE.md` or maintain parallel instruction files.
 
-This repo is local-first now. Do not reintroduce hosted-service assumptions, remote deployment runbooks, or hardcoded production domains.
+## Product Direction
 
-## Core guardrails
+- Koder is **web-first** now.
+- `web/` is the active client direction.
+- `phodex-bridge/` and `relay/` are the current operational core.
+- `CodexMobile/` is legacy/reference unless the user explicitly asks for iOS work.
 
-- Prefer local Mac runtime, local bridge, QR pairing, and daemon workflows.
-- Be an intraprendente agent: proactively inspect local code, protocol/schema, and official sources to confirm facts before replying; do not repeatedly stop to ask for confirmation when the next verification step is safe and obvious.
+## Core Guardrails
+
+- Keep the repo local-first and self-host friendly.
+- Do not hardcode production relay domains or hosted-service assumptions into the OSS path.
+- Self-hosted usage should remain fully usable and free.
+- Hosted monetization belongs in hosted web/backend layers, not in the bridge protocol.
+- Keep bridge, relay, and web responsibilities separated.
+- Shared logic belongs in services/coordinators, not duplicated across entrypoints or views.
+- Avoid junk code, placeholder hacks, one-off workarounds, and low-signal docs.
+
+## Documentation Guardrails
+
+- Keep README honest about current maturity.
+- Do not present the web client as fully integrated if it is still a scaffold.
+- Present `koder` as the preferred CLI name.
+- Mention `remodex` only where legacy package or compatibility details still matter.
+- Use the current repo path `arwebSE/koder` in new docs when a clone URL is needed.
+- Keep `CodexMobile/` described as legacy/reference unless the user asks otherwise.
+
+## Security and Privacy Guardrails
+
+- Do not log live relay `sessionId` values or other bearer-like pairing identifiers in plaintext server logs.
+- Prefer redaction, hashing, or abbreviated identifiers in logs.
+- Keep private deploy values, credentials, and real hosted endpoints out of committed source.
+- Preserve the self-hosted trust model: relay is transport, not runtime.
+
+## Connection and Runtime Guardrails
+
+- Preserve QR/bootstrap and saved-pairing flows in the bridge.
+- Avoid regressions in reconnect behavior or session recovery.
 - Keep repo isolation by thread/project metadata and local `cwd`.
-- Do not reintroduce filtering by selected repo in sidebar/content.
-- Keep cross-repo open/create flow with automatic local context switch.
-- Preserve single responsibility: shared logic belongs in services/coordinators, not duplicated in views.
-- Treat this repo as open source: avoid junk code, placeholder hacks, noisy one-off workarounds, and low-signal docs.
-- If you touch docs, keep them local-only and remove stale hosted-service notes instead of adding compatibility layers.
-- Do not create one-off report markdown files in the repo root (security reports, audit notes, scratch summaries, etc.) unless the user explicitly asks for a file. Keep ad-hoc analysis in the chat.
-- For open-source/self-hosted safety, do not log live relay `sessionId` values or other bearer-like pairing identifiers in server logs; redact or hash them instead.
-- Keep user-facing answers compact by default unless the user explicitly asks for more detail.
+- Preserve local workspace and git execution on the user's machine.
+- Keep desktop refresh optional and avoid making it the default assumption.
 
-## iOS runtime + timeline guardrails
+## Legacy iOS Guardrails
 
-- `turn/started` may not include a usable `turnId`: keep the per-thread running fallback.
-- If Stop is tapped and `activeTurnIdByThread` is missing, resolve via `thread/read` before interrupting.
-- On reconnect/background recover, rehydrate active turn state so Stop remains visible.
-- Suppress benign background disconnect noise (`NWError.posix(.ECONNABORTED)`) and retry on foreground.
-- Keep assistant rows item-scoped to avoid timeline flattening/reordering.
-- Merge late reasoning deltas into existing rows; do not spawn fake extra "Thinking..." rows.
-- Ignore late turn-less activity events when the turn is already inactive.
-- Preserve item-aware history reconciliation instead of falling back to `turnId`-only matching.
+If you touch `CodexMobile/`:
 
-## Local connection guardrails
+- preserve existing runtime compatibility behavior unless explicitly changing it
+- prefer targeted edits over speculative refactors
+- do not run Xcode tests unless the user explicitly asks
+- treat the iOS codebase as compatibility work, not the primary product surface
 
-- Prefer saved relay pairing and local connection state as the source of truth.
-- Avoid hardcoded remote domains; default to local values or explicit user config.
-- Keep pairing/auth UX stable: do not clear saved relay info too early during reconnect flows.
-- Preserve reconnect behavior across relaunch when the local host session is still valid.
-- Preserve the QR/local-relay pairing path: do not regress the scanner -> saved pairing -> connect flow by letting onboarding/auto-reconnect race manual scan control.
-- For local relay recovery, keep resumed desktop-thread live mirroring and rollout fallback logic intact so reopened/running threads still recover state even when the rollout file is older than the recent-candidate window.
+## Web Guardrails
 
-## Build guardrails
+If you touch `web/`:
 
-- Do not run Xcode tests unless the user explicitly asks. Do not decide to run them on your own.
-- Markdown files inside Xcode-synced groups can still produce harmless warnings.
-- For small iOS/mobile fixes, prefer inspection and targeted edits over simulator runs by default.
+- keep the UI distinctive and intentional, not generic dashboard filler
+- prefer production-grade React/Vite/TypeScript changes
+- keep self-hosted vs hosted boundaries explicit in naming and architecture
+- do not wire billing assumptions into the OSS client path by default
 
-## Local quick runbook
+## Local Runbook
 
-```bash
+Bridge:
+
+```sh
 cd phodex-bridge
+npm install
 npm start
+```
+
+Relay:
+
+```sh
+cd relay
+npm install
+npm start
+```
+
+Web:
+
+```sh
+cd web
+npm install
+npm run dev
 ```
