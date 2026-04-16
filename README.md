@@ -39,7 +39,7 @@ See [Docs/KODER_PRODUCT_SPEC.md](Docs/KODER_PRODUCT_SPEC.md) for the current wor
 .
 ├── phodex-bridge/   Node bridge package and CLI (`koder`, legacy `remodex`)
 ├── relay/           Self-hostable relay and optional push service
-├── web/             React + Vite + TypeScript PWA client scaffold
+├── web/             React + Vite + TypeScript PWA client
 ├── CodexMobile/     Legacy iOS reference client
 ├── Docs/            Product notes and self-hosting docs
 └── Legal/           Privacy policy and terms from the older app era
@@ -62,7 +62,7 @@ That starts:
 - the local web client on port `5173`
 - pairing output for the browser PWA flow
 
-Open the printed browser URL on your phone, then paste the printed relay URL and pairing code into the page.
+Open the printed browser URL on your phone, then scan the QR shown by the bridge. If live camera access is blocked on a LAN URL, use the photo capture fallback in the page or paste the printed relay URL and pairing code.
 
 ### npm Bridge Install
 

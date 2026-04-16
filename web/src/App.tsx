@@ -1,4 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { PairingQrScanner } from "./components/PairingQrScanner";
 import { KoderClient } from "./lib/client";
 import { parsePairingPayload } from "./lib/protocol";
 import type { ApprovalRequest, ClientSnapshot, ConversationMessage, TrustedMacRecord } from "./lib/types";
@@ -67,6 +68,34 @@ function App() {
       const payload = parsePairingPayload(pairingPayloadText);
       await client.connectWithPairingPayload(payload);
       setPairingPayloadText("");
+    });
+  }
+
+  function handleQrPairing(rawValue: string) {
+    void runAction("pair-qr", async () => {
+      const trimmedValue = rawValue.trim();
+      if (!trimmedValue) {
+        throw new Error("The scanned QR payload was empty.");
+      }
+
+      if (trimmedValue.startsWith("{")) {
+        const payload = parsePairingPayload(trimmedValue);
+        setRelayUrl(payload.relay);
+        setPairingCode("");
+        setPairingPayloadText(trimmedValue);
+        await client.connectWithPairingPayload(payload);
+        setPairingPayloadText("");
+        return;
+      }
+
+      if (!relayUrl.trim()) {
+        throw new Error("The scanned QR did not include a relay URL. Enter the relay URL first, then scan again.");
+      }
+
+      setPairingPayloadText("");
+      setPairingCode(trimmedValue);
+      await client.connectWithPairingCode(relayUrl, trimmedValue);
+      setPairingCode("");
     });
   }
 
@@ -206,6 +235,7 @@ function App() {
               onPairingPayloadChange={setPairingPayloadText}
               onPairingCodeSubmit={handlePairingCodeSubmit}
               onPairingPayloadSubmit={handlePairingPayloadSubmit}
+              onQrScan={handleQrPairing}
               onReconnect={(macDeviceId) => {
                 void runAction(`reconnect:${macDeviceId}`, () => client.reconnectToTrustedMac(macDeviceId));
               }}
@@ -336,7 +366,7 @@ function App() {
             </div>
             <ul className="bullet-list">
               <li>Run <code>./run-local-koder.sh --hostname &lt;your-mac-ip&gt;</code> on the Mac.</li>
-              <li>Use the printed advertised relay URL here, plus the pairing code.</li>
+              <li>Scan the printed QR first. If live camera is unavailable on this origin, use the photo fallback or the printed relay URL and pairing code.</li>
               <li>After one successful pair, reconnect comes from the saved trusted Mac record.</li>
             </ul>
           </section>
@@ -376,6 +406,7 @@ function OnboardingPanel(props: {
   onPairingPayloadChange: (value: string) => void;
   onPairingCodeSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onPairingPayloadSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onQrScan: (value: string) => void;
   onReconnect: (macDeviceId: string) => void;
   onForget: (macDeviceId: string) => void;
 }) {
@@ -386,18 +417,24 @@ function OnboardingPanel(props: {
           <p className="eyebrow">Onboarding</p>
           <h2>Pair this browser with your self-hosted Mac.</h2>
         </div>
-        <span className="pill">Manual pairing</span>
+        <span className="pill">QR pairing</span>
       </div>
 
       <p className="hero__lede">
         Use the advertised relay URL and short pairing code printed by `./run-local-koder.sh`.
         The browser stores its own device key locally, then reconnects through the trusted-session flow.
+        If you have the laptop terminal open, you can now scan the QR directly from here.
       </p>
 
       <div className="onboarding__grid">
+        <PairingQrScanner
+          disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
+          onScan={props.onQrScan}
+        />
+
         <form className="setup-card" onSubmit={props.onPairingCodeSubmit}>
           <div className="setup-card__header">
-            <p className="eyebrow">Fastest path</p>
+            <p className="eyebrow">Manual</p>
             <h3>Pair with code</h3>
           </div>
           <label className="field">

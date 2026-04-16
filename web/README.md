@@ -1,6 +1,6 @@
 # Koder Web
 
-This directory contains the standalone React + Vite + TypeScript web client scaffold for **Koder**.
+This directory contains the standalone React + Vite + TypeScript web client for **Koder**.
 
 ## Local Run
 
@@ -11,7 +11,7 @@ cd remodex
 ./run-local-koder.sh --hostname 192.168.1.10
 ```
 
-That prints the browser URL for your phone plus the relay URL and pairing code to paste into the PWA.
+That prints the browser URL for your phone plus the relay URL, pairing code, and QR payload bootstrap info. The phone UI can scan the terminal QR directly, or fall back to a photo/manual entry path.
 
 If you only want the web client by itself:
 
@@ -36,4 +36,4 @@ npm run preview
 - PWA manifest and a lightweight service worker
 - Koder-branded remote-coding UI
 - Responsive layout for sidebar, workspace, and session rail
-- Pairing, trusted reconnect, encrypted relay transport, threads, and send flow
+- QR pairing, trusted reconnect, encrypted relay transport, threads, and send flow

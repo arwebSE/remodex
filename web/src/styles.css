@@ -584,6 +584,7 @@ h1 {
 
 .approval-card,
 .setup-card,
+.scanner-card,
 .trusted-card,
 .rail__panel,
 .composer {
@@ -620,9 +621,126 @@ h1 {
   gap: 16px;
 }
 
+.scanner-card {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
 .setup-card__header {
   display: grid;
   gap: 4px;
+}
+
+.scanner-card__preview {
+  position: relative;
+  min-height: 272px;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(236, 173, 80, 0.22), transparent 38%),
+    linear-gradient(160deg, rgba(8, 12, 23, 0.98), rgba(13, 23, 37, 0.88));
+}
+
+.scanner-card__video {
+  width: 100%;
+  min-height: 272px;
+  object-fit: cover;
+  display: block;
+  background: rgba(5, 9, 17, 0.92);
+}
+
+.scanner-card__placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 28px;
+  text-align: center;
+  color: var(--muted);
+  background:
+    linear-gradient(180deg, rgba(4, 9, 18, 0.1), rgba(4, 9, 18, 0.8)),
+    radial-gradient(circle at 50% 50%, rgba(255, 210, 124, 0.15), transparent 48%);
+}
+
+.scanner-card__placeholder strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.scanner-card__frame {
+  position: absolute;
+  inset: 16px;
+  border: 2px solid rgba(255, 228, 179, 0.68);
+  border-radius: 24px;
+  box-shadow:
+    0 0 0 1px rgba(11, 15, 25, 0.4),
+    inset 0 0 48px rgba(255, 193, 105, 0.12);
+  pointer-events: none;
+}
+
+.scanner-card__frame::before,
+.scanner-card__frame::after {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 224, 173, 0.9), transparent);
+}
+
+.scanner-card__frame::before {
+  top: 22%;
+}
+
+.scanner-card__frame::after {
+  bottom: 22%;
+}
+
+.scanner-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.scanner-card__upload {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanner-card__upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.scanner-card__upload--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.scanner-card__status,
+.scanner-card__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.scanner-card__status {
+  color: rgba(245, 236, 220, 0.9);
+}
+
+.scanner-card__hint {
+  padding-top: 4px;
+}
+
+.scanner-card__canvas {
+  display: none;
 }
 
 .field {

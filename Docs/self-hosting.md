@@ -61,8 +61,8 @@ What this does:
 Then:
 
 1. Open the printed browser URL on your phone
-2. Paste the printed relay URL and pairing code into the page
-3. Tap `Connect to Mac`
+2. In the PWA, scan the QR from your Mac terminal. If live camera access is unavailable on that browser session, use the `Use photo` fallback or paste the printed relay URL and pairing code.
+3. Tap `Connect to Mac` if you used the manual pairing fields
 4. Start a thread and send a message
 5. On later launches, use the trusted reconnect buttons before pairing again
 
