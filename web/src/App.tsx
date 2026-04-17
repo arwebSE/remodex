@@ -1,4 +1,4 @@
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { PairingQrScanner } from "./components/PairingQrScanner";
 import { KoderClient } from "./lib/client";
 import {
@@ -41,6 +41,9 @@ function App() {
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
   const seenApprovalIdsRef = useRef<Set<string>>(new Set());
   const alertsHydratedRef = useRef(false);
+  const onboardingScannerRef = useRef<HTMLDivElement>(null);
+  const onboardingManualRef = useRef<HTMLFormElement>(null);
+  const onboardingFallbackRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const unsubscribe = client.subscribe(setSnapshot);
@@ -122,6 +125,10 @@ function App() {
 
   const visibleError = actionError || snapshot.lastError;
   const isConnected = snapshot.connection.phase === "connected";
+
+  function scrollToRef(target: RefObject<HTMLElement>) {
+    target.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   async function runAction(actionLabel: string, action: () => Promise<void>) {
     setActionError("");
@@ -317,6 +324,55 @@ function App() {
         </div>
       </header>
 
+      {!isConnected ? (
+        <section className="quick-pair card">
+          <div className="quick-pair__copy">
+            <p className="eyebrow">Quick start</p>
+            <h2>Pair this iPhone with your Mac</h2>
+            <p className="quick-pair__lede">
+              If the saved reconnect path is flaky, skip it and start from a fresh QR or code immediately.
+            </p>
+          </div>
+          <div className="quick-pair__actions">
+            <button
+              type="button"
+              className="chip chip--primary"
+              onClick={() => scrollToRef(onboardingScannerRef)}
+            >
+              Scan QR
+            </button>
+            <button
+              type="button"
+              className="chip chip--ghost"
+              onClick={() => scrollToRef(onboardingManualRef)}
+            >
+              Pair with code
+            </button>
+            <button
+              type="button"
+              className="chip chip--ghost"
+              onClick={() => scrollToRef(onboardingFallbackRef)}
+            >
+              Paste QR JSON
+            </button>
+            {(snapshot.connection.macDeviceId || snapshot.trustedMacs.length > 0) ? (
+              <button
+                type="button"
+                className="chip chip--ghost chip--danger"
+                onClick={() => {
+                  client.forgetReconnectCandidate(snapshot.connection.macDeviceId || undefined);
+                  setPairingCode("");
+                  setPairingPayloadText("");
+                  setActionError("Saved pairing removed. Scan a fresh QR or enter a new pairing code.");
+                }}
+              >
+                Forget saved pair
+              </button>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       {isConnected && isCompactLayout ? (
         <nav className="mobile-workspace-nav" aria-label="Workspace sections">
           <button
@@ -418,6 +474,9 @@ function App() {
                 pairingPayloadText={pairingPayloadText}
                 trustedMacs={snapshot.trustedMacs}
                 busyAction={activeAction}
+                scannerSectionRef={onboardingScannerRef}
+                manualSectionRef={onboardingManualRef}
+                fallbackSectionRef={onboardingFallbackRef}
                 onRelayUrlChange={setRelayUrl}
                 onPairingCodeChange={setPairingCode}
                 onPairingPayloadChange={setPairingPayloadText}
@@ -786,6 +845,9 @@ function OnboardingPanel(props: {
   pairingPayloadText: string;
   trustedMacs: TrustedMacRecord[];
   busyAction: string | null;
+  scannerSectionRef: RefObject<HTMLDivElement>;
+  manualSectionRef: RefObject<HTMLFormElement>;
+  fallbackSectionRef: RefObject<HTMLFormElement>;
   onRelayUrlChange: (value: string) => void;
   onPairingCodeChange: (value: string) => void;
   onPairingPayloadChange: (value: string) => void;
@@ -797,7 +859,6 @@ function OnboardingPanel(props: {
   onReconnect: (macDeviceId: string) => void;
   onForget: (macDeviceId: string) => void;
 }) {
-  const scannerSectionRef = useRef<HTMLDivElement | null>(null);
   const hasRecoveryState = Boolean(
     props.connection.macDeviceId
       || props.trustedMacs.length
@@ -862,7 +923,7 @@ function OnboardingPanel(props: {
             <button
               type="button"
               className="chip chip--ghost"
-              onClick={() => scannerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() => props.scannerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
             >
               Scan QR again
             </button>
@@ -878,14 +939,14 @@ function OnboardingPanel(props: {
       ) : null}
 
       <div className="onboarding__grid">
-        <div ref={scannerSectionRef}>
+        <div ref={props.scannerSectionRef}>
           <PairingQrScanner
             disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
             onScan={props.onQrScan}
           />
         </div>
 
-        <form className="setup-card" onSubmit={props.onPairingCodeSubmit}>
+        <form ref={props.manualSectionRef} className="setup-card" onSubmit={props.onPairingCodeSubmit}>
           <div className="setup-card__header">
             <p className="eyebrow">Manual</p>
             <h3>Pair with code</h3>
@@ -915,7 +976,7 @@ function OnboardingPanel(props: {
           </button>
         </form>
 
-        <form className="setup-card" onSubmit={props.onPairingPayloadSubmit}>
+        <form ref={props.fallbackSectionRef} className="setup-card" onSubmit={props.onPairingPayloadSubmit}>
           <div className="setup-card__header">
             <p className="eyebrow">Fallback</p>
             <h3>Paste QR payload JSON</h3>

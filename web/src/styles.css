@@ -154,6 +154,7 @@ ul {
 }
 
 .topbar,
+.quick-pair,
 .mobile-workspace-nav,
 .workspace {
   position: relative;
@@ -167,6 +168,40 @@ ul {
   gap: 16px;
   max-width: 1480px;
   margin: 0 auto 18px;
+}
+
+.quick-pair {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  max-width: 1480px;
+  margin: 0 auto 14px;
+  padding: 14px 16px;
+  border-radius: 24px;
+}
+
+.quick-pair__copy {
+  min-width: 0;
+}
+
+.quick-pair__copy h2 {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.08;
+}
+
+.quick-pair__lede {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.quick-pair__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .brand {
@@ -984,6 +1019,15 @@ h1 {
     align-items: stretch;
   }
 
+  .quick-pair {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .quick-pair__actions {
+    justify-content: flex-start;
+  }
+
   .topbar__status {
     width: 100%;
     min-width: 0;
@@ -1157,6 +1201,26 @@ h1 {
   .topbar {
     gap: 10px;
     margin-bottom: 10px;
+  }
+
+  .quick-pair {
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .quick-pair__copy h2 {
+    font-size: 0.95rem;
+  }
+
+  .quick-pair__lede {
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .quick-pair__actions {
+    gap: 8px;
   }
 
   .brand {
