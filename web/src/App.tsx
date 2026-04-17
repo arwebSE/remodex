@@ -405,7 +405,7 @@ function App() {
         className={[
           "workspace",
           isConnected ? "workspace--connected" : "workspace--onboarding",
-          isCompactLayout ? `workspace--pane-${mobilePane}` : "",
+          isConnected && isCompactLayout ? `workspace--pane-${mobilePane}` : "",
         ].join(" ")}
       >
         {isConnected ? (
