@@ -1,6 +1,15 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { PairingQrScanner } from "./components/PairingQrScanner";
 import { KoderClient } from "./lib/client";
+import {
+  canUseSystemNotifications,
+  isStandaloneDisplayMode,
+  readNotificationPermissionState,
+  requestNotificationPermissionFromUser,
+  showSystemNotification,
+  syncAppBadge,
+  type NotificationPermissionState,
+} from "./lib/pwa";
 import { parsePairingPayload } from "./lib/protocol";
 import type {
   ApprovalRequest,
@@ -25,6 +34,13 @@ function App() {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("sessions");
   const [isCompactLayout, setIsCompactLayout] = useState(readCompactLayout);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionState>(
+    readNotificationPermissionState
+  );
+  const [isStandaloneMode, setIsStandaloneMode] = useState(isStandaloneDisplayMode);
+  const seenMessageIdsRef = useRef<Set<string>>(new Set());
+  const seenApprovalIdsRef = useRef<Set<string>>(new Set());
+  const alertsHydratedRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = client.subscribe(setSnapshot);
@@ -57,6 +73,30 @@ function App() {
     media.addEventListener("change", updateLayout);
     return () => {
       media.removeEventListener("change", updateLayout);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updatePwaState = () => {
+      setNotificationPermission(readNotificationPermissionState());
+      setIsStandaloneMode(isStandaloneDisplayMode());
+    };
+
+    updatePwaState();
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", updatePwaState);
+    }
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", updatePwaState);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", updatePwaState);
+      }
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", updatePwaState);
+      }
     };
   }, []);
 
@@ -180,6 +220,80 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    const assistantMessages = Object.values(snapshot.messagesByThread)
+      .flat()
+      .filter((message) => (
+        message.role === "assistant"
+        && message.deliveryState === "confirmed"
+        && !message.isStreaming
+      ));
+    const currentApprovalIds = new Set(snapshot.pendingApprovals.map((approval) => approval.id));
+
+    if (!alertsHydratedRef.current) {
+      seenMessageIdsRef.current = new Set(assistantMessages.map((message) => message.id));
+      seenApprovalIdsRef.current = currentApprovalIds;
+      alertsHydratedRef.current = true;
+      return;
+    }
+
+    void syncAppBadge(snapshot.pendingApprovals.length).catch(() => {});
+
+    if (!shouldSurfaceSystemAlert() || notificationPermission !== "granted") {
+      seenMessageIdsRef.current = new Set(assistantMessages.map((message) => message.id));
+      seenApprovalIdsRef.current = currentApprovalIds;
+      return;
+    }
+
+    for (const message of assistantMessages) {
+      if (seenMessageIdsRef.current.has(message.id) || !isFreshEnoughForAlert(message.createdAt)) {
+        continue;
+      }
+      seenMessageIdsRef.current.add(message.id);
+      const threadTitle = snapshot.threads.find((thread) => thread.id === message.threadId)?.title || "Koder";
+      void showSystemNotification({
+        title: `Koder · ${threadTitle}`,
+        body: clampNotificationBody(message.text),
+        tag: `thread:${message.threadId}`,
+        url: "/",
+      }).catch(() => {});
+    }
+
+    for (const approval of snapshot.pendingApprovals) {
+      if (seenApprovalIdsRef.current.has(approval.id)) {
+        continue;
+      }
+      seenApprovalIdsRef.current.add(approval.id);
+      void showSystemNotification({
+        title: "Koder approval needed",
+        body: clampNotificationBody(approval.reason || approval.command || approval.method),
+        tag: `approval:${approval.id}`,
+        url: "/",
+      }).catch(() => {});
+    }
+
+    seenApprovalIdsRef.current = currentApprovalIds;
+  }, [notificationPermission, snapshot.messagesByThread, snapshot.pendingApprovals, snapshot.threads]);
+
+  function handleEnableAlerts() {
+    void runAction("enable-alerts", async () => {
+      const permission = await requestNotificationPermissionFromUser();
+      setNotificationPermission(permission);
+      if (permission !== "granted") {
+        throw new Error(permission === "denied"
+          ? "Notifications are blocked for this browser session."
+          : "Notification permission was not granted.");
+      }
+      await showSystemNotification({
+        title: "Koder alerts enabled",
+        body: "You will now receive local assistant and approval notifications while this PWA stays connected.",
+        tag: "alerts-enabled",
+        url: "/",
+        silent: true,
+      });
+    });
+  }
+
   return (
     <div className="app-shell">
       <div className="app-shell__glow app-shell__glow--one" />
@@ -283,6 +397,11 @@ function App() {
               <StatusRail
                 snapshot={snapshot}
                 visibleError={visibleError}
+                notificationPermission={notificationPermission}
+                canUseNotifications={canUseSystemNotifications()}
+                isStandaloneMode={isStandaloneMode}
+                activeAction={activeAction}
+                onEnableAlerts={handleEnableAlerts}
                 onClearError={() => setActionError("")}
               />
             </aside>
@@ -315,6 +434,11 @@ function App() {
               <StatusRail
                 snapshot={snapshot}
                 visibleError={visibleError}
+                notificationPermission={notificationPermission}
+                canUseNotifications={canUseSystemNotifications()}
+                isStandaloneMode={isStandaloneMode}
+                activeAction={activeAction}
+                onEnableAlerts={handleEnableAlerts}
                 onClearError={() => setActionError("")}
               />
             </aside>
@@ -540,6 +664,11 @@ function ChatStage(props: {
 function StatusRail(props: {
   snapshot: ClientSnapshot;
   visibleError: string;
+  notificationPermission: NotificationPermissionState;
+  canUseNotifications: boolean;
+  isStandaloneMode: boolean;
+  activeAction: string | null;
+  onEnableAlerts: () => void;
   onClearError: () => void;
 }) {
   return (
@@ -566,6 +695,38 @@ function StatusRail(props: {
             <strong>{props.snapshot.pendingApprovals.length}</strong>
           </div>
         </div>
+      </section>
+
+      <section className="rail__panel">
+        <div className="card__header">
+          <div>
+            <p className="eyebrow">PWA</p>
+            <h2>Install and alerts</h2>
+          </div>
+        </div>
+        <div className="connection-grid connection-grid--stacked">
+          <article className="connection-tile">
+            <span>Mode</span>
+            <strong>{props.isStandaloneMode ? "Installed app" : "Browser tab"}</strong>
+          </article>
+          <article className="connection-tile">
+            <span>Alerts</span>
+            <strong>{notificationStatusLabel(props.notificationPermission, props.canUseNotifications)}</strong>
+          </article>
+        </div>
+        <p className="rail__hint">
+          Installed Home Screen mode is what unlocks iPhone web-push later. Right now the PWA can already raise local system alerts while a live session is connected.
+        </p>
+        {props.canUseNotifications && props.notificationPermission !== "granted" ? (
+          <button
+            type="button"
+            className="chip chip--primary"
+            disabled={props.activeAction === "enable-alerts"}
+            onClick={props.onEnableAlerts}
+          >
+            Enable alerts
+          </button>
+        ) : null}
       </section>
 
       <section className="rail__panel">
@@ -859,6 +1020,42 @@ function readCompactLayout(): boolean {
     return false;
   }
   return window.matchMedia(COMPACT_LAYOUT_QUERY).matches;
+}
+
+function notificationStatusLabel(
+  permission: NotificationPermissionState,
+  supported: boolean
+): string {
+  if (!supported || permission === "unsupported") {
+    return "Unsupported";
+  }
+  if (permission === "granted") {
+    return "Ready";
+  }
+  if (permission === "denied") {
+    return "Blocked";
+  }
+  return "Not enabled";
+}
+
+function shouldSurfaceSystemAlert(): boolean {
+  if (typeof document === "undefined") {
+    return false;
+  }
+  return document.visibilityState !== "visible" || (typeof document.hasFocus === "function" && !document.hasFocus());
+}
+
+function isFreshEnoughForAlert(value: string): boolean {
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && Date.now() - timestamp <= 5 * 60_000;
+}
+
+function clampNotificationBody(value: string): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 160) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 157)}...`;
 }
 
 function formatRelativeTime(value: string | null): string {

@@ -5,13 +5,13 @@ export async function registerServiceWorker(): Promise<void> {
     return;
   }
 
-  if (!import.meta.env.PROD) {
+  if (!window.isSecureContext) {
     return;
   }
 
   try {
     await navigator.serviceWorker.register(SW_URL, { scope: "/" });
   } catch {
-    // PWA support is best-effort during scaffold stage.
+    // PWA support stays best-effort for self-hosted installs.
   }
 }
