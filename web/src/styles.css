@@ -220,7 +220,39 @@ ul {
 }
 
 .brand--compact-chat {
-  gap: 0;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand__compact-chat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand__compact-chat-row h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__sessions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: var(--text);
+  cursor: pointer;
+  flex: none;
+}
+
+.topbar__sessions::before {
+  content: "←";
 }
 
 .brand__mark {
@@ -1213,6 +1245,11 @@ h1 {
     margin-bottom: 8px;
   }
 
+  .topbar--compact-chat {
+    align-items: center;
+    gap: 8px;
+  }
+
   .quick-pair {
     flex-direction: column;
     align-items: stretch;
@@ -1327,8 +1364,7 @@ h1 {
   }
 
   .workspace--pane-chat .chat-stage__header {
-    gap: 6px;
-    padding-bottom: 2px;
+    display: none;
   }
 
   .workspace--pane-chat .chat-stage__title {
@@ -1353,11 +1389,37 @@ h1 {
   }
 
   .workspace--pane-chat .composer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .workspace--pane-chat .composer__chrome {
+    display: none;
+  }
+
+  .workspace--pane-chat .composer__actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex: none;
   }
 
   .workspace--pane-chat .composer textarea {
-    min-height: 70px;
+    min-height: 0;
+    height: 42px;
+    max-height: 42px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    resize: none;
+    overflow: hidden;
+  }
+
+  .workspace--pane-chat .composer .chip {
+    min-height: 42px;
+    padding: 0 12px;
   }
 
   .message {
@@ -1634,6 +1696,13 @@ h1 {
     margin-bottom: 6px;
   }
 
+  .topbar--compact-chat {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
   .quick-pair {
     gap: 10px;
     margin-bottom: 10px;
@@ -1659,7 +1728,9 @@ h1 {
   }
 
   .brand--compact-chat {
-    gap: 0;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
   }
 
   .brand__mark {
@@ -1677,6 +1748,21 @@ h1 {
   h1 {
     font-size: 1.1rem;
     line-height: 1;
+  }
+
+  .brand__compact-chat-row {
+    gap: 8px;
+    width: 100%;
+  }
+
+  .brand__compact-chat-row h1 {
+    font-size: 0.98rem;
+  }
+
+  .topbar__sessions {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 0.74rem;
   }
 
   .topbar__status {
@@ -1779,8 +1865,7 @@ h1 {
   }
 
   .workspace--pane-chat .chat-stage__header {
-    gap: 4px;
-    padding-bottom: 2px;
+    display: none;
   }
 
   .workspace--pane-chat .chat-stage__title {
@@ -1795,6 +1880,38 @@ h1 {
     min-height: 28px;
     padding: 0 8px;
     font-size: 0.72rem;
+  }
+
+  .workspace--pane-chat .composer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .workspace--pane-chat .composer__chrome {
+    display: none;
+  }
+
+  .workspace--pane-chat .composer__actions {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .workspace--pane-chat .composer textarea {
+    min-height: 0;
+    height: 38px;
+    max-height: 38px;
+    padding: 8px 12px;
+    border-radius: 14px;
+    resize: none;
+  }
+
+  .workspace--pane-chat .composer .chip {
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 0.74rem;
   }
 
   .chat-stage__title h2,

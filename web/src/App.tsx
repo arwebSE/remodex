@@ -252,15 +252,22 @@ function App() {
       <div className="app-shell__glow app-shell__glow--one" />
       <div className="app-shell__glow app-shell__glow--two" />
 
-      <header className="topbar">
+      <header className={`topbar ${isCompactChatPane ? "topbar--compact-chat" : ""}`}>
         <div className={`brand ${isCompactChatPane ? "brand--compact-chat" : ""}`}>
           <div className="brand__mark">K</div>
-          {!isCompactChatPane ? (
+          {isCompactChatPane ? (
+            <div className="brand__compact-chat-row">
+              <button type="button" className="topbar__sessions" onClick={() => setMobilePane("sessions")}>
+                Sessions
+              </button>
+              <h1>{activeThread?.title || "Chat"}</h1>
+            </div>
+          ) : (
             <div>
               <p className="eyebrow">Self-hosted PWA</p>
               <h1>Koder</h1>
             </div>
-          ) : null}
+          )}
         </div>
 
         {showTopbarStatus ? (
@@ -736,7 +743,7 @@ function ChatStage(props: {
         </section>
       ) : null}
 
-      <form className="composer" onSubmit={props.onSendSubmit}>
+      <form className={`composer ${props.isCompactLayout ? "composer--compact" : ""}`} onSubmit={props.onSendSubmit}>
         <div className="composer__chrome">
           <span className="composer__label">Prompt</span>
           <span className="composer__hint">Cmd/Ctrl+Enter sends instantly</span>
