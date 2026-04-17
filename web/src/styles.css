@@ -869,12 +869,9 @@ h1 {
   gap: 16px;
 }
 
-.onboarding-card--active {
+.onboarding__focus {
   display: grid;
-}
-
-.onboarding-card--inactive {
-  display: none;
+  gap: 16px;
 }
 
 .setup-card,
@@ -1137,14 +1134,6 @@ h1 {
   .onboarding__grid,
   .recovery-card__meta {
     grid-template-columns: 1fr;
-  }
-
-  .onboarding-card--active {
-    display: grid;
-  }
-
-  .onboarding-card--inactive {
-    display: none;
   }
 
   .thread-list,

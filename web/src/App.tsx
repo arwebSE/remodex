@@ -1,4 +1,4 @@
-import { FormEvent, KeyboardEvent, RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { PairingQrScanner } from "./components/PairingQrScanner";
 import { KoderClient } from "./lib/client";
 import {
@@ -43,9 +43,6 @@ function App() {
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
   const seenApprovalIdsRef = useRef<Set<string>>(new Set());
   const alertsHydratedRef = useRef(false);
-  const onboardingScannerRef = useRef<HTMLDivElement>(null);
-  const onboardingManualRef = useRef<HTMLFormElement>(null);
-  const onboardingFallbackRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const unsubscribe = client.subscribe(setSnapshot);
@@ -130,20 +127,6 @@ function App() {
 
   function selectOnboardingMode(mode: OnboardingMode) {
     setOnboardingMode(mode);
-    const target = mode === "scanner"
-      ? onboardingScannerRef.current
-      : mode === "manual"
-        ? onboardingManualRef.current
-        : onboardingFallbackRef.current;
-    window.requestAnimationFrame(() => {
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
-      if (mode === "manual") {
-        onboardingManualRef.current?.querySelector("input")?.focus();
-      }
-      if (mode === "json") {
-        onboardingFallbackRef.current?.querySelector("textarea")?.focus();
-      }
-    });
   }
 
   async function runAction(actionLabel: string, action: () => Promise<void>) {
@@ -492,9 +475,7 @@ function App() {
                 busyAction={activeAction}
                 selectedMode={onboardingMode}
                 isCompactLayout={isCompactLayout}
-                scannerSectionRef={onboardingScannerRef}
-                manualSectionRef={onboardingManualRef}
-                fallbackSectionRef={onboardingFallbackRef}
+                onSelectMode={selectOnboardingMode}
                 onRelayUrlChange={setRelayUrl}
                 onPairingCodeChange={setPairingCode}
                 onPairingPayloadChange={setPairingPayloadText}
@@ -865,9 +846,7 @@ function OnboardingPanel(props: {
   busyAction: string | null;
   selectedMode: OnboardingMode;
   isCompactLayout: boolean;
-  scannerSectionRef: RefObject<HTMLDivElement>;
-  manualSectionRef: RefObject<HTMLFormElement>;
-  fallbackSectionRef: RefObject<HTMLFormElement>;
+  onSelectMode: (mode: OnboardingMode) => void;
   onRelayUrlChange: (value: string) => void;
   onPairingCodeChange: (value: string) => void;
   onPairingPayloadChange: (value: string) => void;
@@ -886,6 +865,71 @@ function OnboardingPanel(props: {
       || props.connection.phase === "restoring"
       || props.connection.phase === "error"
       || props.visibleError
+  );
+
+  const scannerCard = (
+    <div className="scanner-card">
+      <PairingQrScanner
+        disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
+        onScan={props.onQrScan}
+      />
+    </div>
+  );
+
+  const manualCard = (
+    <form className="setup-card" onSubmit={props.onPairingCodeSubmit}>
+      <div className="setup-card__header">
+        <p className="eyebrow">Manual</p>
+        <h3>Pair with code</h3>
+      </div>
+      <label className="field">
+        <span>Relay URL</span>
+        <input
+          value={props.relayUrl}
+          onChange={(event) => props.onRelayUrlChange(event.target.value)}
+          placeholder="wss://192.168.1.10:5173/relay"
+        />
+      </label>
+      <label className="field">
+        <span>Pairing code</span>
+        <input
+          value={props.pairingCode}
+          onChange={(event) => props.onPairingCodeChange(event.target.value)}
+          placeholder="RMX1:ABC123..."
+        />
+      </label>
+      <button
+        type="submit"
+        className="chip chip--primary chip--stretch"
+        disabled={!props.relayUrl.trim() || !props.pairingCode.trim() || props.busyAction === "pair-code"}
+      >
+        Connect to Mac
+      </button>
+    </form>
+  );
+
+  const jsonCard = (
+    <form className="setup-card" onSubmit={props.onPairingPayloadSubmit}>
+      <div className="setup-card__header">
+        <p className="eyebrow">Fallback</p>
+        <h3>Paste QR payload JSON</h3>
+      </div>
+      <label className="field">
+        <span>Pairing payload</span>
+        <textarea
+          value={props.pairingPayloadText}
+          onChange={(event) => props.onPairingPayloadChange(event.target.value)}
+          placeholder='{"v":2,"relay":"wss://.../relay","sessionId":"..."}'
+        />
+      </label>
+      <button
+        type="submit"
+        className="chip chip--ghost chip--stretch"
+        disabled={!props.pairingPayloadText.trim() || props.busyAction === "pair-json"}
+      >
+        Use QR payload
+      </button>
+    </form>
   );
 
   return (
@@ -943,7 +987,7 @@ function OnboardingPanel(props: {
             <button
               type="button"
               className="chip chip--ghost"
-              onClick={() => props.scannerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() => props.onSelectMode("scanner")}
             >
               Scan QR again
             </button>
@@ -958,77 +1002,19 @@ function OnboardingPanel(props: {
         </section>
       ) : null}
 
-      <div className="onboarding__grid">
-        <div
-          ref={props.scannerSectionRef}
-          className={onboardingCardClass("scanner", props.selectedMode, props.isCompactLayout)}
-        >
-          <PairingQrScanner
-            disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
-            onScan={props.onQrScan}
-          />
+      {props.isCompactLayout ? (
+        <div className="onboarding__focus">
+          {props.selectedMode === "scanner" ? scannerCard : null}
+          {props.selectedMode === "manual" ? manualCard : null}
+          {props.selectedMode === "json" ? jsonCard : null}
         </div>
-
-        <form
-          ref={props.manualSectionRef}
-          className={onboardingCardClass("manual", props.selectedMode, props.isCompactLayout, "setup-card")}
-          onSubmit={props.onPairingCodeSubmit}
-        >
-          <div className="setup-card__header">
-            <p className="eyebrow">Manual</p>
-            <h3>Pair with code</h3>
-          </div>
-          <label className="field">
-            <span>Relay URL</span>
-            <input
-              value={props.relayUrl}
-              onChange={(event) => props.onRelayUrlChange(event.target.value)}
-              placeholder="wss://192.168.1.10:5173/relay"
-            />
-          </label>
-          <label className="field">
-            <span>Pairing code</span>
-            <input
-              value={props.pairingCode}
-              onChange={(event) => props.onPairingCodeChange(event.target.value)}
-              placeholder="RMX1:ABC123..."
-            />
-          </label>
-          <button
-            type="submit"
-            className="chip chip--primary chip--stretch"
-            disabled={!props.relayUrl.trim() || !props.pairingCode.trim() || props.busyAction === "pair-code"}
-          >
-            Connect to Mac
-          </button>
-        </form>
-
-        <form
-          ref={props.fallbackSectionRef}
-          className={onboardingCardClass("json", props.selectedMode, props.isCompactLayout, "setup-card")}
-          onSubmit={props.onPairingPayloadSubmit}
-        >
-          <div className="setup-card__header">
-            <p className="eyebrow">Fallback</p>
-            <h3>Paste QR payload JSON</h3>
-          </div>
-          <label className="field">
-            <span>Pairing payload</span>
-            <textarea
-              value={props.pairingPayloadText}
-              onChange={(event) => props.onPairingPayloadChange(event.target.value)}
-              placeholder='{"v":2,"relay":"wss://.../relay","sessionId":"..."}'
-            />
-          </label>
-          <button
-            type="submit"
-            className="chip chip--ghost chip--stretch"
-            disabled={!props.pairingPayloadText.trim() || props.busyAction === "pair-json"}
-          >
-            Use QR payload
-          </button>
-        </form>
-      </div>
+      ) : (
+        <div className="onboarding__grid">
+          {scannerCard}
+          {manualCard}
+          {jsonCard}
+        </div>
+      )}
 
       <section className="trusted-grid">
         <div className="card__header">
@@ -1070,23 +1056,6 @@ function OnboardingPanel(props: {
       </section>
     </div>
   );
-}
-
-function onboardingCardClass(
-  mode: OnboardingMode,
-  selectedMode: OnboardingMode,
-  isCompactLayout: boolean,
-  baseClass = "scanner-card"
-): string {
-  if (!isCompactLayout) {
-    return baseClass;
-  }
-
-  return [
-    baseClass,
-    "onboarding-card",
-    mode === selectedMode ? "onboarding-card--active" : "onboarding-card--inactive",
-  ].join(" ");
 }
 
 function MessageBubble({ message }: { message: ConversationMessage }) {
