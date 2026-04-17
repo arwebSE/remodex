@@ -124,6 +124,7 @@ function App() {
 
   const visibleError = actionError || snapshot.lastError;
   const isConnected = snapshot.connection.phase === "connected";
+  const showTopbarStatus = isConnected || !isCompactLayout;
 
   function selectOnboardingMode(mode: OnboardingMode) {
     setOnboardingMode(mode);
@@ -314,16 +315,18 @@ function App() {
           </div>
         </div>
 
-        <div className={`topbar__status topbar__status--${snapshot.connection.phase}`}>
-          <span className={`status-dot status-dot--${statusTone(snapshot.connection.phase)}`} />
-          <div>
-            <strong>{snapshot.connection.label}</strong>
-            <span>{connectionSubline(snapshot)}</span>
+        {showTopbarStatus ? (
+          <div className={`topbar__status topbar__status--${snapshot.connection.phase}`}>
+            <span className={`status-dot status-dot--${statusTone(snapshot.connection.phase)}`} />
+            <div>
+              <strong>{snapshot.connection.label}</strong>
+              <span>{connectionSubline(snapshot)}</span>
+            </div>
           </div>
-        </div>
+        ) : null}
       </header>
 
-      {!isConnected ? (
+      {!isConnected && !isCompactLayout ? (
         <section className="quick-pair card">
           <div className="quick-pair__copy">
             <p className="eyebrow">Quick start</p>
@@ -462,6 +465,42 @@ function App() {
               />
             </aside>
           </>
+        ) : isCompactLayout ? (
+          <section className="hero card hero--onboarding hero--onboarding-compact">
+            <OnboardingPanel
+              connection={snapshot.connection}
+              visibleError={visibleError}
+              relayUrl={relayUrl}
+              pairingCode={pairingCode}
+              pairingPayloadText={pairingPayloadText}
+              trustedMacs={snapshot.trustedMacs}
+              busyAction={activeAction}
+              selectedMode={onboardingMode}
+              isCompactLayout={isCompactLayout}
+              onSelectMode={selectOnboardingMode}
+              onRelayUrlChange={setRelayUrl}
+              onPairingCodeChange={setPairingCode}
+              onPairingPayloadChange={setPairingPayloadText}
+              onPairingCodeSubmit={handlePairingCodeSubmit}
+              onPairingPayloadSubmit={handlePairingPayloadSubmit}
+              onQrScan={handleQrPairing}
+              onRetrySavedPair={() => {
+                void runAction("restore", () => client.restoreConnection());
+              }}
+              onForgetCurrentPair={() => {
+                client.forgetReconnectCandidate(snapshot.connection.macDeviceId || undefined);
+                setPairingCode("");
+                setPairingPayloadText("");
+                setActionError("Saved pairing removed. Scan a fresh QR or enter a new pairing code.");
+              }}
+              onReconnect={(macDeviceId) => {
+                void runAction(`reconnect:${macDeviceId}`, () => client.reconnectToTrustedMac(macDeviceId));
+              }}
+              onForget={(macDeviceId) => {
+                client.forgetReconnectCandidate(macDeviceId);
+              }}
+            />
+          </section>
         ) : (
           <>
             <section className="hero card hero--onboarding">
@@ -474,6 +513,7 @@ function App() {
                 trustedMacs={snapshot.trustedMacs}
                 busyAction={activeAction}
                 selectedMode={onboardingMode}
+                isCompactLayout={isCompactLayout}
                 onSelectMode={selectOnboardingMode}
                 onRelayUrlChange={setRelayUrl}
                 onPairingCodeChange={setPairingCode}
@@ -844,6 +884,7 @@ function OnboardingPanel(props: {
   trustedMacs: TrustedMacRecord[];
   busyAction: string | null;
   selectedMode: OnboardingMode;
+  isCompactLayout: boolean;
   onSelectMode: (mode: OnboardingMode) => void;
   onRelayUrlChange: (value: string) => void;
   onPairingCodeChange: (value: string) => void;
@@ -866,8 +907,9 @@ function OnboardingPanel(props: {
   );
 
   const scannerCard = (
-    <div className="scanner-card">
+    <div className={`scanner-card ${props.isCompactLayout ? "scanner-card--compact" : ""}`}>
       <PairingQrScanner
+        compact={props.isCompactLayout}
         disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
         onScan={props.onQrScan}
       />
@@ -875,10 +917,10 @@ function OnboardingPanel(props: {
   );
 
   const manualCard = (
-    <form className="setup-card" onSubmit={props.onPairingCodeSubmit}>
+    <form className={`setup-card ${props.isCompactLayout ? "setup-card--compact" : ""}`} onSubmit={props.onPairingCodeSubmit}>
       <div className="setup-card__header">
         <p className="eyebrow">Manual</p>
-        <h3>Pair with code</h3>
+        <h3>{props.isCompactLayout ? "Use relay URL and code" : "Pair with code"}</h3>
       </div>
       <label className="field">
         <span>Relay URL</span>
@@ -907,10 +949,10 @@ function OnboardingPanel(props: {
   );
 
   const jsonCard = (
-    <form className="setup-card" onSubmit={props.onPairingPayloadSubmit}>
+    <form className={`setup-card ${props.isCompactLayout ? "setup-card--compact" : ""}`} onSubmit={props.onPairingPayloadSubmit}>
       <div className="setup-card__header">
         <p className="eyebrow">Fallback</p>
-        <h3>Paste QR payload JSON</h3>
+        <h3>{props.isCompactLayout ? "Paste the QR JSON" : "Paste QR payload JSON"}</h3>
       </div>
       <label className="field">
         <span>Pairing payload</span>
@@ -934,23 +976,53 @@ function OnboardingPanel(props: {
     <div className="onboarding">
       <div className="hero__header">
         <div>
-          <p className="eyebrow">Onboarding</p>
-          <h2>Pair this browser with your self-hosted Mac.</h2>
+          {!props.isCompactLayout ? <p className="eyebrow">Onboarding</p> : null}
+          <h2>{props.isCompactLayout ? "Pair this iPhone with your Mac" : "Pair this browser with your self-hosted Mac."}</h2>
         </div>
-        <span className="pill">QR pairing</span>
+        {!props.isCompactLayout ? <span className="pill">QR pairing</span> : null}
       </div>
 
       <p className="hero__lede">
-        Use the advertised relay URL and short pairing code printed by <code>./run-local-koder.sh</code>.
-        The browser stores its own device key locally, then reconnects through the trusted-session flow.
+        {props.isCompactLayout
+          ? "Scan the Mac QR first, or switch to code or JSON if the saved path is bad."
+          : (
+            <>
+              Use the advertised relay URL and short pairing code printed by <code>./run-local-koder.sh</code>.
+              The browser stores its own device key locally, then reconnects through the trusted-session flow.
+            </>
+          )}
       </p>
 
+      <div className="onboarding-mode-switch" role="tablist" aria-label="Pairing mode">
+        <button
+          type="button"
+          className={`chip ${props.selectedMode === "scanner" ? "chip--primary" : "chip--ghost"}`}
+          onClick={() => props.onSelectMode("scanner")}
+        >
+          {props.isCompactLayout ? "Scan" : "Scan QR"}
+        </button>
+        <button
+          type="button"
+          className={`chip ${props.selectedMode === "manual" ? "chip--primary" : "chip--ghost"}`}
+          onClick={() => props.onSelectMode("manual")}
+        >
+          {props.isCompactLayout ? "Code" : "Pair with code"}
+        </button>
+        <button
+          type="button"
+          className={`chip ${props.selectedMode === "json" ? "chip--primary" : "chip--ghost"}`}
+          onClick={() => props.onSelectMode("json")}
+        >
+          {props.isCompactLayout ? "JSON" : "Paste QR JSON"}
+        </button>
+      </div>
+
       {hasRecoveryState ? (
-        <section className="recovery-card">
+        <section className={`recovery-card ${props.isCompactLayout ? "recovery-card--compact" : ""}`}>
           <div className="recovery-card__header">
             <div>
-              <p className="eyebrow">Recovery</p>
-              <h3>{recoveryTitle(props.connection)}</h3>
+              <p className="eyebrow">{props.isCompactLayout ? "Saved pair" : "Recovery"}</p>
+              <h3>{props.isCompactLayout ? "Reconnect or reset" : recoveryTitle(props.connection)}</h3>
             </div>
             <span className={`pill ${props.connection.phase === "error" ? "pill--warn" : ""}`}>
               {props.connection.phase}
@@ -980,21 +1052,21 @@ function OnboardingPanel(props: {
               disabled={props.busyAction === "restore"}
               onClick={props.onRetrySavedPair}
             >
-              Try reconnect
+              {props.isCompactLayout ? "Reconnect" : "Try reconnect"}
             </button>
             <button
               type="button"
               className="chip chip--ghost"
               onClick={() => props.onSelectMode("scanner")}
             >
-              Scan QR again
+              {props.isCompactLayout ? "New QR" : "Scan QR again"}
             </button>
             <button
               type="button"
               className="chip chip--ghost chip--danger"
               onClick={props.onForgetCurrentPair}
             >
-              Forget saved pair
+              {props.isCompactLayout ? "Forget" : "Forget saved pair"}
             </button>
           </div>
         </section>
@@ -1006,7 +1078,8 @@ function OnboardingPanel(props: {
         {props.selectedMode === "json" ? jsonCard : null}
       </div>
 
-      <section className="trusted-grid">
+      {props.trustedMacs.length > 0 ? (
+        <section className="trusted-grid">
         <div className="card__header">
           <div>
             <p className="eyebrow">Reconnect</p>
@@ -1017,7 +1090,6 @@ function OnboardingPanel(props: {
         {props.trustedMacs.length === 0 ? (
           <p className="sidebar__empty">No trusted Macs yet. Complete one pairing first.</p>
         ) : null}
-
         {props.trustedMacs.map((mac) => (
           <article key={mac.macDeviceId} className="trusted-card">
             <div>
@@ -1044,6 +1116,7 @@ function OnboardingPanel(props: {
           </article>
         ))}
       </section>
+      ) : null}
     </div>
   );
 }

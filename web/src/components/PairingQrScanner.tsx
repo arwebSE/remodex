@@ -2,6 +2,7 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
 
 interface PairingQrScannerProps {
+  compact?: boolean;
   disabled?: boolean;
   onScan: (value: string) => void;
 }
@@ -11,7 +12,7 @@ type ScannerMode = "idle" | "starting" | "live" | "processing";
 const LIVE_CAMERA_UNAVAILABLE_COPY =
   "Live camera scan needs HTTPS or localhost in this browser. Use the camera-photo fallback below if this page is opened over a LAN IP.";
 
-export function PairingQrScanner({ disabled = false, onScan }: PairingQrScannerProps) {
+export function PairingQrScanner({ compact = false, disabled = false, onScan }: PairingQrScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -19,7 +20,9 @@ export function PairingQrScanner({ disabled = false, onScan }: PairingQrScannerP
   const scanInFlightRef = useRef(false);
 
   const [mode, setMode] = useState<ScannerMode>("idle");
-  const [status, setStatus] = useState("Scan the pairing QR from your Mac, or use a camera photo.");
+  const [status, setStatus] = useState(
+    compact ? "Scan the Mac QR or use a camera photo." : "Scan the pairing QR from your Mac, or use a camera photo."
+  );
   const [error, setError] = useState("");
 
   const liveCameraSupported = useMemo(() => {
@@ -48,7 +51,7 @@ export function PairingQrScanner({ disabled = false, onScan }: PairingQrScannerP
 
     stopLiveScan();
     setError("");
-    setStatus("Starting camera…");
+      setStatus(compact ? "Starting camera…" : "Starting camera…");
     setMode("starting");
 
     try {
@@ -68,7 +71,7 @@ export function PairingQrScanner({ disabled = false, onScan }: PairingQrScannerP
       video.srcObject = stream;
       await video.play();
       setMode("live");
-      setStatus("Point the camera at the QR on your Mac.");
+      setStatus(compact ? "Point at the Mac QR." : "Point the camera at the QR on your Mac.");
       scheduleFrame();
     } catch (scanError) {
       stopLiveScan();
@@ -131,7 +134,7 @@ export function PairingQrScanner({ disabled = false, onScan }: PairingQrScannerP
 
     setError("");
     setMode("processing");
-    setStatus("Reading captured image…");
+    setStatus(compact ? "Reading photo…" : "Reading captured image…");
 
     try {
       const canvas = canvasRef.current;
@@ -154,32 +157,36 @@ export function PairingQrScanner({ disabled = false, onScan }: PairingQrScannerP
     scanInFlightRef.current = true;
     setMode("processing");
     setError("");
-    setStatus("QR detected. Pairing with the Mac…");
+    setStatus(compact ? "QR found. Pairing…" : "QR detected. Pairing with the Mac…");
 
     try {
       onScan(value);
-      setStatus("QR detected. Pairing request sent.");
+      setStatus(compact ? "Pairing request sent." : "QR detected. Pairing request sent.");
     } finally {
       scanInFlightRef.current = false;
       setMode("idle");
     }
   }
 
-  const liveButtonLabel = mode === "live" || mode === "starting" ? "Stop camera" : "Scan live";
+  const liveButtonLabel = mode === "live" || mode === "starting"
+    ? (compact ? "Stop" : "Stop camera")
+    : (compact ? "Live scan" : "Scan live");
 
   return (
-    <section className="scanner-card">
-      <div className="setup-card__header">
-        <p className="eyebrow">Fastest path</p>
-        <h3>Scan the pairing QR</h3>
-      </div>
+    <section className={`scanner-card ${compact ? "scanner-card--compact" : ""}`}>
+      {!compact ? (
+        <div className="setup-card__header">
+          <p className="eyebrow">Fastest path</p>
+          <h3>Scan the pairing QR</h3>
+        </div>
+      ) : null}
 
       <div className="scanner-card__preview">
         <video ref={videoRef} className="scanner-card__video" playsInline muted />
         {mode !== "live" ? (
           <div className="scanner-card__placeholder">
             <strong>Camera ready for the Mac QR</strong>
-            <span>Open the QR on your laptop terminal, then scan it here.</span>
+            <span>{compact ? "Open the QR on your Mac and scan it here." : "Open the QR on your laptop terminal, then scan it here."}</span>
           </div>
         ) : null}
         <div className="scanner-card__frame" aria-hidden="true" />
@@ -194,7 +201,7 @@ export function PairingQrScanner({ disabled = false, onScan }: PairingQrScannerP
             if (mode === "live" || mode === "starting") {
               stopLiveScan();
               setMode("idle");
-              setStatus("Camera stopped. You can start it again or use a photo.");
+              setStatus(compact ? "Camera stopped." : "Camera stopped. You can start it again or use a photo.");
               return;
             }
             void startLiveScan();
@@ -211,12 +218,12 @@ export function PairingQrScanner({ disabled = false, onScan }: PairingQrScannerP
             disabled={disabled}
             onChange={handleImageCapture}
           />
-          Use photo
+          {compact ? "Photo" : "Use photo"}
         </label>
       </div>
 
       <p className="scanner-card__status">{error || status}</p>
-      {!liveCameraSupported ? (
+      {!liveCameraSupported && !compact ? (
         <p className="scanner-card__hint">{LIVE_CAMERA_UNAVAILABLE_COPY}</p>
       ) : null}
 

@@ -365,6 +365,17 @@ h1 {
   display: block;
 }
 
+.hero__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.hero__header h2 {
+  margin: 0;
+}
+
 .sidebar__section,
 .rail__panel,
 .approval-card,
@@ -833,6 +844,16 @@ h1 {
   gap: 18px;
 }
 
+.onboarding-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.onboarding-mode-switch .chip {
+  min-width: 0;
+}
+
 .recovery-card {
   display: grid;
   gap: 16px;
@@ -1136,6 +1157,148 @@ h1 {
     grid-template-columns: 1fr;
   }
 
+  .hero--onboarding-compact {
+    padding: 14px;
+    min-height: auto;
+  }
+
+  .hero--onboarding-compact .onboarding {
+    gap: 12px;
+  }
+
+  .hero--onboarding-compact .hero__header {
+    gap: 8px;
+  }
+
+  .hero--onboarding-compact .hero__header h2 {
+    font-size: clamp(1.3rem, 5vw, 1.7rem);
+    line-height: 1.04;
+    letter-spacing: -0.04em;
+  }
+
+  .hero--onboarding-compact .hero__lede {
+    max-width: none;
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+
+  .hero--onboarding-compact .onboarding-mode-switch {
+    gap: 8px;
+  }
+
+  .hero--onboarding-compact .onboarding-mode-switch .chip {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  .hero--onboarding-compact .onboarding__focus {
+    gap: 0;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .hero--onboarding-compact .setup-card--compact,
+  .hero--onboarding-compact .scanner-card--compact {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .hero--onboarding-compact .setup-card--compact .setup-card__header {
+    display: none;
+  }
+
+  .hero--onboarding-compact .setup-card--compact .field {
+    gap: 6px;
+    font-size: 0.82rem;
+  }
+
+  .hero--onboarding-compact .setup-card--compact .field textarea {
+    min-height: 132px;
+  }
+
+  .hero--onboarding-compact .setup-card--compact input,
+  .hero--onboarding-compact .setup-card--compact textarea {
+    border-radius: 16px;
+    padding: 12px 14px;
+  }
+
+  .hero--onboarding-compact .scanner-card__preview {
+    min-height: 214px;
+    border-radius: 18px;
+  }
+
+  .hero--onboarding-compact .scanner-card__video {
+    min-height: 214px;
+  }
+
+  .hero--onboarding-compact .scanner-card__placeholder {
+    padding: 18px;
+    gap: 6px;
+  }
+
+  .hero--onboarding-compact .scanner-card__placeholder strong {
+    font-size: 0.94rem;
+  }
+
+  .hero--onboarding-compact .scanner-card__frame {
+    inset: 12px;
+    border-radius: 20px;
+  }
+
+  .hero--onboarding-compact .scanner-card__actions {
+    gap: 8px;
+  }
+
+  .hero--onboarding-compact .scanner-card__status {
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+
+  .hero--onboarding-compact .recovery-card--compact {
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .hero--onboarding-compact .recovery-card--compact .recovery-card__meta {
+    gap: 8px;
+  }
+
+  .hero--onboarding-compact .recovery-card--compact .recovery-card__copy {
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .hero--onboarding-compact .recovery-card--compact .recovery-card__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .hero--onboarding-compact .recovery-card--compact .chip {
+    width: 100%;
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 0.76rem;
+  }
+
+  .hero--onboarding-compact .connection-tile,
+  .hero--onboarding-compact .trusted-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .hero--onboarding-compact .trusted-card__actions {
+    flex-direction: row;
+    align-items: center;
+  }
+
   .thread-list,
   .message-pane,
   .approval-stack,
@@ -1345,6 +1508,11 @@ h1 {
     line-height: 1.1;
   }
 
+  .hero--onboarding-compact .hero__header h2 {
+    font-size: 1.18rem;
+    line-height: 1.06;
+  }
+
   .chat-stage__subtitle,
   .hero__lede,
   .rail__hint,
@@ -1360,6 +1528,70 @@ h1 {
     min-height: 34px;
     padding: 7px 10px;
     font-size: 0.8rem;
+  }
+
+  .hero--onboarding-compact {
+    padding: 12px;
+  }
+
+  .hero--onboarding-compact .onboarding {
+    gap: 10px;
+  }
+
+  .hero--onboarding-compact .onboarding-mode-switch {
+    gap: 6px;
+  }
+
+  .hero--onboarding-compact .onboarding-mode-switch .chip {
+    min-height: 34px;
+    padding: 7px 0;
+    font-size: 0.75rem;
+  }
+
+  .hero--onboarding-compact .onboarding__focus {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .hero--onboarding-compact .scanner-card__preview,
+  .hero--onboarding-compact .scanner-card__video {
+    min-height: 188px;
+  }
+
+  .hero--onboarding-compact .scanner-card__placeholder {
+    padding: 16px;
+  }
+
+  .hero--onboarding-compact .scanner-card__placeholder strong {
+    font-size: 0.88rem;
+  }
+
+  .hero--onboarding-compact .scanner-card__frame {
+    inset: 10px;
+    border-radius: 18px;
+  }
+
+  .hero--onboarding-compact .setup-card--compact input,
+  .hero--onboarding-compact .setup-card--compact textarea {
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .hero--onboarding-compact .recovery-card--compact,
+  .hero--onboarding-compact .connection-tile,
+  .hero--onboarding-compact .trusted-card {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .hero--onboarding-compact .recovery-card--compact .recovery-card__actions {
+    gap: 6px;
+  }
+
+  .hero--onboarding-compact .recovery-card--compact .chip {
+    min-height: 34px;
+    padding: 7px 8px;
+    font-size: 0.72rem;
   }
 
   .thread-list,
