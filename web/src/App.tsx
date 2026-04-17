@@ -410,6 +410,8 @@ function App() {
           <>
             <section className="hero card hero--onboarding">
               <OnboardingPanel
+                connection={snapshot.connection}
+                visibleError={visibleError}
                 relayUrl={relayUrl}
                 pairingCode={pairingCode}
                 pairingPayloadText={pairingPayloadText}
@@ -421,6 +423,15 @@ function App() {
                 onPairingCodeSubmit={handlePairingCodeSubmit}
                 onPairingPayloadSubmit={handlePairingPayloadSubmit}
                 onQrScan={handleQrPairing}
+                onRetrySavedPair={() => {
+                  void runAction("restore", () => client.restoreConnection());
+                }}
+                onForgetCurrentPair={() => {
+                  client.forgetReconnectCandidate(snapshot.connection.macDeviceId || undefined);
+                  setPairingCode("");
+                  setPairingPayloadText("");
+                  setActionError("Saved pairing removed. Scan a fresh QR or enter a new pairing code.");
+                }}
                 onReconnect={(macDeviceId) => {
                   void runAction(`reconnect:${macDeviceId}`, () => client.reconnectToTrustedMac(macDeviceId));
                 }}
@@ -762,6 +773,8 @@ function StatusRail(props: {
 }
 
 function OnboardingPanel(props: {
+  connection: ClientSnapshot["connection"];
+  visibleError: string;
   relayUrl: string;
   pairingCode: string;
   pairingPayloadText: string;
@@ -773,9 +786,21 @@ function OnboardingPanel(props: {
   onPairingCodeSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onPairingPayloadSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onQrScan: (value: string) => void;
+  onRetrySavedPair: () => void;
+  onForgetCurrentPair: () => void;
   onReconnect: (macDeviceId: string) => void;
   onForget: (macDeviceId: string) => void;
 }) {
+  const scannerSectionRef = useRef<HTMLDivElement | null>(null);
+  const hasRecoveryState = Boolean(
+    props.connection.macDeviceId
+      || props.trustedMacs.length
+      || props.connection.phase === "connecting"
+      || props.connection.phase === "restoring"
+      || props.connection.phase === "error"
+      || props.visibleError
+  );
+
   return (
     <div className="onboarding">
       <div className="hero__header">
@@ -791,11 +816,68 @@ function OnboardingPanel(props: {
         The browser stores its own device key locally, then reconnects through the trusted-session flow.
       </p>
 
+      {hasRecoveryState ? (
+        <section className="recovery-card">
+          <div className="recovery-card__header">
+            <div>
+              <p className="eyebrow">Recovery</p>
+              <h3>{recoveryTitle(props.connection)}</h3>
+            </div>
+            <span className={`pill ${props.connection.phase === "error" ? "pill--warn" : ""}`}>
+              {props.connection.phase}
+            </span>
+          </div>
+
+          <p className="recovery-card__copy">
+            {props.visibleError
+              || recoveryCopy(props.connection)}
+          </p>
+
+          <div className="recovery-card__meta">
+            <article className="connection-tile">
+              <span>Saved Mac</span>
+              <strong>{props.connection.macName || props.connection.macDeviceId || "Unknown"}</strong>
+            </article>
+            <article className="connection-tile">
+              <span>Relay</span>
+              <strong>{compactRelayLabel(props.connection.relayUrl) || "No relay saved"}</strong>
+            </article>
+          </div>
+
+          <div className="recovery-card__actions">
+            <button
+              type="button"
+              className="chip chip--primary"
+              disabled={props.busyAction === "restore"}
+              onClick={props.onRetrySavedPair}
+            >
+              Try reconnect
+            </button>
+            <button
+              type="button"
+              className="chip chip--ghost"
+              onClick={() => scannerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              Scan QR again
+            </button>
+            <button
+              type="button"
+              className="chip chip--ghost chip--danger"
+              onClick={props.onForgetCurrentPair}
+            >
+              Forget saved pair
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       <div className="onboarding__grid">
-        <PairingQrScanner
-          disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
-          onScan={props.onQrScan}
-        />
+        <div ref={scannerSectionRef}>
+          <PairingQrScanner
+            disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
+            onScan={props.onQrScan}
+          />
+        </div>
 
         <form className="setup-card" onSubmit={props.onPairingCodeSubmit}>
           <div className="setup-card__header">
@@ -968,6 +1050,29 @@ function statusTone(phase: ClientSnapshot["connection"]["phase"]): "good" | "war
     default:
       return "neutral";
   }
+}
+
+function recoveryTitle(connection: ClientSnapshot["connection"]): string {
+  if (connection.phase === "error") {
+    return "This saved pair needs intervention.";
+  }
+  if (connection.phase === "connecting" || connection.phase === "restoring") {
+    return "Trusted reconnect is taking too long.";
+  }
+  if (connection.secureState === "trustedMac") {
+    return "A saved trusted Mac is ready.";
+  }
+  return "Use a fresh pairing if reconnect is unreliable.";
+}
+
+function recoveryCopy(connection: ClientSnapshot["connection"]): string {
+  if (connection.phase === "error") {
+    return "The saved trust record failed. Reconnect once if you expect a transient network issue, otherwise forget it and scan a fresh QR.";
+  }
+  if (connection.phase === "connecting" || connection.phase === "restoring") {
+    return "The browser should not sit here indefinitely anymore. If this reconnect still hangs, skip the old trust record and pair from a fresh QR now.";
+  }
+  return "Saved trusted-Mac reconnect is meant to be convenient, not mandatory. A fresh QR pairing should always be one tap away.";
 }
 
 function preferredRelayUrlFromPage(): string {

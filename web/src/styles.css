@@ -598,6 +598,11 @@ h1 {
   border: 1px solid var(--border);
 }
 
+.chip--danger {
+  border-color: rgba(255, 118, 143, 0.28);
+  color: #ffd9e1;
+}
+
 .chip--stretch {
   width: 100%;
 }
@@ -785,6 +790,36 @@ h1 {
 .onboarding {
   display: grid;
   gap: 18px;
+}
+
+.recovery-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(255, 178, 88, 0.18);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(24, 18, 10, 0.92), rgba(14, 12, 9, 0.92)),
+    radial-gradient(circle at top left, rgba(255, 178, 88, 0.12), transparent 42%);
+}
+
+.recovery-card__header,
+.recovery-card__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recovery-card__copy {
+  color: rgba(247, 232, 204, 0.92);
+  line-height: 1.6;
+}
+
+.recovery-card__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .onboarding__grid {
@@ -1012,7 +1047,9 @@ h1 {
   .composer__chrome,
   .composer__actions,
   .trusted-card__actions,
-  .approval-card__actions {
+  .approval-card__actions,
+  .recovery-card__header,
+  .recovery-card__actions {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1037,7 +1074,8 @@ h1 {
 
   .connection-grid,
   .stats,
-  .onboarding__grid {
+  .onboarding__grid,
+  .recovery-card__meta {
     grid-template-columns: 1fr;
   }
 

@@ -53,6 +53,7 @@ const textDecoder = new TextDecoder();
 const WEB_CLIENT_VERSION = "0.2.0";
 const REQUEST_TIMEOUT_MS = 20_000;
 const SECURE_CONTROL_TIMEOUT_MS = 12_000;
+const HTTP_REQUEST_TIMEOUT_MS = 10_000;
 
 type Listener = (snapshot: ClientSnapshot) => void;
 
@@ -209,7 +210,10 @@ export class KoderClient {
       expiresAt?: number;
       error?: string;
       code?: string;
-    }>(resolveUrl, { code: normalizedCode });
+    }>(resolveUrl, { code: normalizedCode }, {
+      timeoutMs: HTTP_REQUEST_TIMEOUT_MS,
+      timeoutMessage: "Timed out while resolving the pairing code. Check the relay URL or scan a fresh QR.",
+    });
 
     const payload = validatePairingPayload({
       v: response.v,
@@ -759,6 +763,9 @@ export class KoderClient {
         nonce,
         timestamp,
         signature: bytesToBase64(signature),
+      }, {
+        timeoutMs: HTTP_REQUEST_TIMEOUT_MS,
+        timeoutMessage: "Timed out while contacting the trusted Mac relay. Try reconnecting once, then scan a fresh QR if it keeps stalling.",
       });
     } catch (error) {
       if (isCodedError(error, "phone_not_trusted") || isCodedError(error, "invalid_signature")) {
@@ -1749,14 +1756,41 @@ function bytesToBase64(value: Uint8Array): string {
   return btoa(binary);
 }
 
-async function postJSON<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+async function postJSON<T>(
+  url: string,
+  body: unknown,
+  options: {
+    timeoutMs?: number;
+    timeoutMessage?: string;
+  } = {}
+): Promise<T> {
+  const timeoutMs = Number.isFinite(options.timeoutMs) && Number(options.timeoutMs) > 0
+    ? Number(options.timeoutMs)
+    : HTTP_REQUEST_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw codedError(
+        options.timeoutMessage || "The relay request timed out before the Mac responded.",
+        "request_timeout"
+      );
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
