@@ -23,6 +23,7 @@ const client = new KoderClient();
 const COMPACT_LAYOUT_QUERY = "(max-width: 920px)";
 
 type MobilePane = "sessions" | "chat" | "status";
+type OnboardingMode = "scanner" | "manual" | "json";
 
 function App() {
   const [snapshot, setSnapshot] = useState<ClientSnapshot>(client.getSnapshot());
@@ -33,6 +34,7 @@ function App() {
   const [actionError, setActionError] = useState("");
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("sessions");
+  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>("scanner");
   const [isCompactLayout, setIsCompactLayout] = useState(readCompactLayout);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionState>(
     readNotificationPermissionState
@@ -126,8 +128,22 @@ function App() {
   const visibleError = actionError || snapshot.lastError;
   const isConnected = snapshot.connection.phase === "connected";
 
-  function scrollToRef(target: RefObject<HTMLElement>) {
-    target.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function selectOnboardingMode(mode: OnboardingMode) {
+    setOnboardingMode(mode);
+    const target = mode === "scanner"
+      ? onboardingScannerRef.current
+      : mode === "manual"
+        ? onboardingManualRef.current
+        : onboardingFallbackRef.current;
+    window.requestAnimationFrame(() => {
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (mode === "manual") {
+        onboardingManualRef.current?.querySelector("input")?.focus();
+      }
+      if (mode === "json") {
+        onboardingFallbackRef.current?.querySelector("textarea")?.focus();
+      }
+    });
   }
 
   async function runAction(actionLabel: string, action: () => Promise<void>) {
@@ -336,22 +352,22 @@ function App() {
           <div className="quick-pair__actions">
             <button
               type="button"
-              className="chip chip--primary"
-              onClick={() => scrollToRef(onboardingScannerRef)}
+              className={`chip ${onboardingMode === "scanner" ? "chip--primary" : "chip--ghost"}`}
+              onClick={() => selectOnboardingMode("scanner")}
             >
               Scan QR
             </button>
             <button
               type="button"
-              className="chip chip--ghost"
-              onClick={() => scrollToRef(onboardingManualRef)}
+              className={`chip ${onboardingMode === "manual" ? "chip--primary" : "chip--ghost"}`}
+              onClick={() => selectOnboardingMode("manual")}
             >
               Pair with code
             </button>
             <button
               type="button"
-              className="chip chip--ghost"
-              onClick={() => scrollToRef(onboardingFallbackRef)}
+              className={`chip ${onboardingMode === "json" ? "chip--primary" : "chip--ghost"}`}
+              onClick={() => selectOnboardingMode("json")}
             >
               Paste QR JSON
             </button>
@@ -474,6 +490,8 @@ function App() {
                 pairingPayloadText={pairingPayloadText}
                 trustedMacs={snapshot.trustedMacs}
                 busyAction={activeAction}
+                selectedMode={onboardingMode}
+                isCompactLayout={isCompactLayout}
                 scannerSectionRef={onboardingScannerRef}
                 manualSectionRef={onboardingManualRef}
                 fallbackSectionRef={onboardingFallbackRef}
@@ -845,6 +863,8 @@ function OnboardingPanel(props: {
   pairingPayloadText: string;
   trustedMacs: TrustedMacRecord[];
   busyAction: string | null;
+  selectedMode: OnboardingMode;
+  isCompactLayout: boolean;
   scannerSectionRef: RefObject<HTMLDivElement>;
   manualSectionRef: RefObject<HTMLFormElement>;
   fallbackSectionRef: RefObject<HTMLFormElement>;
@@ -939,14 +959,21 @@ function OnboardingPanel(props: {
       ) : null}
 
       <div className="onboarding__grid">
-        <div ref={props.scannerSectionRef}>
+        <div
+          ref={props.scannerSectionRef}
+          className={onboardingCardClass("scanner", props.selectedMode, props.isCompactLayout)}
+        >
           <PairingQrScanner
             disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
             onScan={props.onQrScan}
           />
         </div>
 
-        <form ref={props.manualSectionRef} className="setup-card" onSubmit={props.onPairingCodeSubmit}>
+        <form
+          ref={props.manualSectionRef}
+          className={onboardingCardClass("manual", props.selectedMode, props.isCompactLayout, "setup-card")}
+          onSubmit={props.onPairingCodeSubmit}
+        >
           <div className="setup-card__header">
             <p className="eyebrow">Manual</p>
             <h3>Pair with code</h3>
@@ -976,7 +1003,11 @@ function OnboardingPanel(props: {
           </button>
         </form>
 
-        <form ref={props.fallbackSectionRef} className="setup-card" onSubmit={props.onPairingPayloadSubmit}>
+        <form
+          ref={props.fallbackSectionRef}
+          className={onboardingCardClass("json", props.selectedMode, props.isCompactLayout, "setup-card")}
+          onSubmit={props.onPairingPayloadSubmit}
+        >
           <div className="setup-card__header">
             <p className="eyebrow">Fallback</p>
             <h3>Paste QR payload JSON</h3>
@@ -1039,6 +1070,23 @@ function OnboardingPanel(props: {
       </section>
     </div>
   );
+}
+
+function onboardingCardClass(
+  mode: OnboardingMode,
+  selectedMode: OnboardingMode,
+  isCompactLayout: boolean,
+  baseClass = "scanner-card"
+): string {
+  if (!isCompactLayout) {
+    return baseClass;
+  }
+
+  return [
+    baseClass,
+    "onboarding-card",
+    mode === selectedMode ? "onboarding-card--active" : "onboarding-card--inactive",
+  ].join(" ");
 }
 
 function MessageBubble({ message }: { message: ConversationMessage }) {
