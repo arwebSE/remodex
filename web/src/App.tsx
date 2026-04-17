@@ -474,7 +474,6 @@ function App() {
                 trustedMacs={snapshot.trustedMacs}
                 busyAction={activeAction}
                 selectedMode={onboardingMode}
-                isCompactLayout={isCompactLayout}
                 onSelectMode={selectOnboardingMode}
                 onRelayUrlChange={setRelayUrl}
                 onPairingCodeChange={setPairingCode}
@@ -845,7 +844,6 @@ function OnboardingPanel(props: {
   trustedMacs: TrustedMacRecord[];
   busyAction: string | null;
   selectedMode: OnboardingMode;
-  isCompactLayout: boolean;
   onSelectMode: (mode: OnboardingMode) => void;
   onRelayUrlChange: (value: string) => void;
   onPairingCodeChange: (value: string) => void;
@@ -1002,19 +1000,11 @@ function OnboardingPanel(props: {
         </section>
       ) : null}
 
-      {props.isCompactLayout ? (
-        <div className="onboarding__focus">
-          {props.selectedMode === "scanner" ? scannerCard : null}
-          {props.selectedMode === "manual" ? manualCard : null}
-          {props.selectedMode === "json" ? jsonCard : null}
-        </div>
-      ) : (
-        <div className="onboarding__grid">
-          {scannerCard}
-          {manualCard}
-          {jsonCard}
-        </div>
-      )}
+      <div className="onboarding__focus">
+        {props.selectedMode === "scanner" ? scannerCard : null}
+        {props.selectedMode === "manual" ? manualCard : null}
+        {props.selectedMode === "json" ? jsonCard : null}
+      </div>
 
       <section className="trusted-grid">
         <div className="card__header">
