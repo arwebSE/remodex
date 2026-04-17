@@ -77,6 +77,12 @@ export function buildTrustedSessionResolveUrl(relayUrl: string): string {
   return url.toString();
 }
 
+export function buildSelfHostedBootstrapUrl(relayUrl: string): string {
+  const url = normalizeRelayHttpUrl(relayUrl);
+  url.pathname = `${relayPathPrefix(url.pathname)}/v1/self-host/bootstrap`;
+  return url.toString();
+}
+
 export function parseThreadList(result: unknown): ThreadSummary[] {
   return parseThreadListPage(result).threads;
 }

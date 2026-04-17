@@ -1,7 +1,7 @@
 // FILE: relay.js
 // Purpose: Thin self-hostable WebSocket relay for Remodex pairing, trusted-session lookup, and encrypted forwarding.
 // Layer: Standalone server module
-// Exports: setupRelay, getRelayStats, hasActiveMacSession, hasAuthenticatedMacSession, resolveTrustedMacSession, resolvePairingCode
+// Exports: setupRelay, getRelayStats, hasActiveMacSession, hasAuthenticatedMacSession, resolveTrustedMacSession, resolvePairingCode, resolveDirectBootstrapSession
 
 const { createHash, createPublicKey, verify } = require("crypto");
 const { WebSocket } = require("ws");
@@ -400,6 +400,30 @@ function resolvePairingCode({
   };
 }
 
+function resolveDirectBootstrapSession() {
+  const liveRegistrations = Array.from(liveSessionsByMacDeviceId.values()).filter((registration) => (
+    registration
+    && registration.sessionId
+    && registration.macDeviceId
+    && registration.macIdentityPublicKey
+    && hasActiveMacSession(registration.sessionId)
+  ));
+
+  if (liveRegistrations.length === 0) {
+    throw createRelayError(404, "session_unavailable", "No live Koder bridge is available on this host.");
+  }
+
+  const selected = liveRegistrations.at(-1);
+  return {
+    ok: true,
+    v: 2,
+    sessionId: selected.sessionId,
+    macDeviceId: selected.macDeviceId,
+    macIdentityPublicKey: selected.macIdentityPublicKey,
+    displayName: selected.displayName || null,
+  };
+}
+
 // Exposes lightweight runtime stats for health/status endpoints.
 function getRelayStats() {
   let totalClients = 0;
@@ -648,6 +672,7 @@ module.exports = {
   getRelayStats,
   hasActiveMacSession,
   hasAuthenticatedMacSession,
+  resolveDirectBootstrapSession,
   resolvePairingCode,
   resolveTrustedMacSession,
 };

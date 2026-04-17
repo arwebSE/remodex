@@ -263,6 +263,35 @@ test("pairing code resolve returns bootstrap metadata for a live mac session", a
   });
 });
 
+test("self-host bootstrap returns live mac metadata without pairing", async () => {
+  await withServer(async ({ port }) => {
+    const mac = new WebSocket(`ws://127.0.0.1:${port}/relay/direct-live-1`, {
+      headers: {
+        "x-role": "mac",
+        "x-mac-device-id": "mac-direct-1",
+        "x-mac-identity-public-key": "mac-public-key-direct-1",
+        "x-machine-name": "Koder-Mac",
+      },
+    });
+    await onceOpen(mac);
+
+    const response = await fetch(`http://127.0.0.1:${port}/v1/self-host/bootstrap`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      v: 2,
+      sessionId: "direct-live-1",
+      macDeviceId: "mac-direct-1",
+      macIdentityPublicKey: "mac-public-key-direct-1",
+      displayName: "Koder-Mac",
+    });
+
+    const macClosed = onceClosed(mac);
+    mac.close();
+    await macClosed;
+  });
+});
+
 test("pairing code resolve rejects expired codes", async () => {
   await withServer(async ({ port }) => {
     const mac = new WebSocket(`ws://127.0.0.1:${port}/relay/pairing-live-2`, {

@@ -206,3 +206,12 @@ export interface TrustedSessionResolveResponse {
   displayName?: string | null;
   sessionId: string;
 }
+
+export interface DirectBootstrapResponse {
+  ok: boolean;
+  v: number;
+  sessionId: string;
+  macDeviceId: string;
+  macIdentityPublicKey: string;
+  displayName?: string | null;
+}

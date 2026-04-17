@@ -8,13 +8,13 @@ This is the single repo-local agent guidance file for this project. Do not recre
 - `web/` is the active client direction.
 - `phodex-bridge/` and `relay/` are the current operational core.
 - `CodexMobile/` is legacy/reference unless the user explicitly asks for iOS work.
+- Default assumption: the active product is fully self-hosted and free.
 
 ## Core Guardrails
 
 - Keep the repo local-first and self-host friendly.
-- Do not hardcode production relay domains or hosted-service assumptions into the OSS path.
+- Do not hardcode production relay domains or hosted-service assumptions.
 - Self-hosted usage should remain fully usable and free.
-- Hosted monetization belongs in hosted web/backend layers, not in the bridge protocol.
 - Keep bridge, relay, and web responsibilities separated.
 - Shared logic belongs in services/coordinators, not duplicated across entrypoints or views.
 - Avoid junk code, placeholder hacks, one-off workarounds, and low-signal docs.
@@ -22,7 +22,7 @@ This is the single repo-local agent guidance file for this project. Do not recre
 ## Documentation Guardrails
 
 - Keep README honest about current maturity.
-- Do not present the web client as fully integrated if it is still a scaffold.
+- Do not present the web client as less complete than it is.
 - Present `koder` as the preferred CLI name.
 - Mention `remodex` only where legacy package or compatibility details still matter.
 - Use the current repo path `arwebSE/koder` in new docs when a clone URL is needed.
@@ -38,6 +38,7 @@ This is the single repo-local agent guidance file for this project. Do not recre
 ## Connection and Runtime Guardrails
 
 - Preserve QR/bootstrap and saved-pairing flows in the bridge.
+- Prefer direct self-host browser access over QR in the web client.
 - Avoid regressions in reconnect behavior or session recovery.
 - Keep repo isolation by thread/project metadata and local `cwd`.
 - Preserve local workspace and git execution on the user's machine.
@@ -58,8 +59,8 @@ If you touch `web/`:
 
 - keep the UI distinctive and intentional, not generic dashboard filler
 - prefer production-grade React/Vite/TypeScript changes
-- keep self-hosted vs hosted boundaries explicit in naming and architecture
-- do not wire billing assumptions into the OSS client path by default
+- keep self-host assumptions explicit in naming and architecture
+- do not wire billing or hosted-service assumptions into the web client path
 
 ## Local Runbook
 

@@ -10,6 +10,7 @@ const {
   setupRelay,
   getRelayStats,
   hasAuthenticatedMacSession,
+  resolveDirectBootstrapSession,
   resolvePairingCode,
   resolveTrustedMacSession,
 } = require("./relay");
@@ -152,6 +153,10 @@ async function handleHTTPRequest(req, res, {
 
   if (req.method === "POST" && pathname === "/v1/trusted/session/resolve") {
     return handleJSONRoute(req, res, async (body) => resolveTrustedMacSession(body));
+  }
+
+  if (req.method === "GET" && pathname === "/v1/self-host/bootstrap") {
+    return writeJSON(res, 200, resolveDirectBootstrapSession());
   }
 
   if (req.method === "POST" && pathname === "/v1/pairing/code/resolve") {

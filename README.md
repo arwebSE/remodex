@@ -12,24 +12,22 @@ Koder is a local-first remote client for [Codex](https://openai.com/index/codex/
 
 Be precise about the current state:
 
-- `web/` is the new primary direction and already contains a React + Vite + TypeScript PWA scaffold.
-- `phodex-bridge/` and `relay/` are the working backend pieces that drive pairing, session routing, and the local Codex bridge.
+- `web/` is the new primary direction and now works as the self-hosted React + Vite + TypeScript PWA client.
+- `phodex-bridge/` and `relay/` are the working backend pieces that drive session routing and the local Codex bridge.
 - `CodexMobile/` is still in the repo as a **legacy reference client**, not the future product direction.
 
-That means Koder is **web-first in roadmap and branding**, but the browser client is not fully wired into the bridge/relay flow yet.
+That means Koder is now **web-first in both roadmap and active self-hosted usage**.
 
 ## Product Model
 
-Koder is being split into two clear paths:
-
-- **Koder OSS**: self-hosted bridge, relay, and web client are free.
-- **Koder Cloud**: the hosted web app and hosted infrastructure are the paid offering.
+Koder is now a single path:
 
 Rules:
 
-- self-hosted usage should stay fully usable and free
-- monetization belongs in hosted web/backend layers, not in the open protocol
-- the current plan is mild hosted-only annoyware for free cloud users, not a hard product lock
+- self-hosted bridge, relay, and web client are the product
+- the project is 100% free to use in self-hosted mode
+- there is no hosted paid tier in the current direction
+- keep the relay as transport, not a hosted control plane
 
 See [Docs/KODER_PRODUCT_SPEC.md](Docs/KODER_PRODUCT_SPEC.md) for the current working direction.
 
@@ -62,7 +60,7 @@ That starts:
 - the local web client on port `5173`
 - pairing output for the browser PWA flow
 
-Open the printed browser URL on your phone over HTTPS, then scan the QR shown by the bridge. The launcher now serves the PWA on a secure origin and exposes a matching `wss://.../relay` URL through that same origin. If your phone does not trust the temporary local certificate yet, the browser will still block live camera until you trust it or fall back to photo/manual pairing.
+Open the printed browser URL on your phone over HTTPS. The launcher serves the PWA on a secure origin and exposes a matching `wss://.../relay` URL through that same origin. The browser now attaches directly to the live self-hosted bridge on that host; QR is legacy bridge output, not the web onboarding path.
 
 ### npm Bridge Install
 
@@ -80,7 +78,7 @@ The legacy CLI alias still works too.
 ```text
 ┌──────────────┐      paired session      ┌───────────────┐      JSON-RPC / stdio      ┌─────────────┐
 │  Koder Web   │ ◄──────────────────────► │ koder bridge  │ ◄────────────────────────► │ codex       │
-│  / legacy iOS│      via relay           │ on your Mac   │                             │ app-server  │
+│              │      via relay           │ on your Mac   │                             │ app-server  │
 └──────────────┘                          └───────────────┘                             └─────────────┘
                                                   │
                                                   ▼

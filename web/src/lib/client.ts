@@ -3,6 +3,7 @@ import { ed25519, x25519 } from "@noble/curves/ed25519";
 import { hkdf } from "@noble/hashes/hkdf";
 import { sha256 } from "@noble/hashes/sha2";
 import {
+  buildSelfHostedBootstrapUrl,
   buildPairingCodeResolveUrl,
   buildRelaySocketUrl,
   buildTrustedSessionResolveUrl,
@@ -32,6 +33,7 @@ import type {
   ClientSnapshot,
   ConnectionSummary,
   ConversationMessage,
+  DirectBootstrapResponse,
   PairingPayload,
   PersistedState,
   RpcMessage,
@@ -145,8 +147,18 @@ export class KoderClient {
   private async restoreConnectionInternal(): Promise<void> {
     this.setConnection({
       phase: "restoring",
-      label: "Restoring saved pair...",
+      label: "Finding local Koder host...",
     });
+
+    const localRelayUrl = defaultRelayUrlFromPage();
+    if (localRelayUrl) {
+      try {
+        await this.connectToSelfHostedHost(localRelayUrl, { quiet: true });
+        return;
+      } catch (error) {
+        this.setLastError(error instanceof Error ? error.message : "Could not reach the self-hosted Koder host.");
+      }
+    }
 
     const records = trustedMacList(this.persistedState);
     const preferred = preferredTrustedMac(records, this.persistedState.lastTrustedMacDeviceId);
@@ -178,8 +190,53 @@ export class KoderClient {
 
     this.setConnection({
       phase: "idle",
-      label: this.snapshot.connection.secureState === "trustedMac" ? "Trusted Mac ready" : "Pair a Mac to begin",
+      label: this.snapshot.connection.secureState === "trustedMac" ? "Saved Koder host ready" : "Open a live Koder host to begin",
     });
+  }
+
+  async connectToSelfHostedHost(relayUrl: string, options: { quiet?: boolean } = {}): Promise<void> {
+    const response = await getJSON<DirectBootstrapResponse>(buildSelfHostedBootstrapUrl(relayUrl), {
+      timeoutMs: HTTP_REQUEST_TIMEOUT_MS,
+      timeoutMessage: "Timed out while reaching the self-hosted Koder host.",
+    });
+
+    const payload = validatePairingPayload({
+      v: response.v,
+      relay: relayUrl,
+      sessionId: response.sessionId,
+      macDeviceId: response.macDeviceId,
+      macIdentityPublicKey: response.macIdentityPublicKey,
+      expiresAt: Date.now() + 60_000,
+    });
+
+    this.persistedState = updatePersistedState(this.persistedState, (draft) => {
+      const existing = draft.trustedMacRegistry[payload.macDeviceId];
+      draft.relaySession = createRelaySessionRecord({
+        relayUrl: payload.relay,
+        sessionId: payload.sessionId,
+        macDeviceId: payload.macDeviceId,
+        macIdentityPublicKey: payload.macIdentityPublicKey,
+        shouldForceQRBootstrapOnNextHandshake: true,
+      });
+      draft.trustedMacRegistry[payload.macDeviceId] = {
+        ...createTrustedMacRecord(
+          payload.macDeviceId,
+          payload.macIdentityPublicKey,
+          payload.relay,
+          response.displayName ?? existing?.displayName ?? null
+        ),
+        relayURL: payload.relay,
+        displayName: response.displayName ?? existing?.displayName ?? null,
+        lastResolvedSessionId: payload.sessionId,
+        lastResolvedAt: new Date().toISOString(),
+        lastUsedAt: new Date().toISOString(),
+      };
+      draft.lastTrustedMacDeviceId = payload.macDeviceId;
+      return draft;
+    });
+
+    this.syncTrustedMacs();
+    await this.connectWithSavedSession(options);
   }
 
   async connectWithPairingPayload(payload: PairingPayload): Promise<void> {
@@ -433,7 +490,7 @@ export class KoderClient {
     }
 
     if (this.snapshot.connection.phase !== "connected") {
-      throw new Error("Connect to a Mac before sending a message.");
+      throw new Error("Connect to the self-hosted Koder host before sending a message.");
     }
 
     let threadId = this.snapshot.activeThreadId;
@@ -536,7 +593,7 @@ export class KoderClient {
     this.setConnection({
       phase: "disconnected",
       secureState: preferred ? "trustedMac" : "notPaired",
-      label: preferred ? "Trusted Mac ready" : "Pair a Mac to begin",
+      label: preferred ? "Saved Koder host ready" : "Open a live Koder host to begin",
       relayUrl: this.persistedState.relaySession?.relayUrl ?? preferred?.relayURL ?? "",
       macDeviceId: preferred?.macDeviceId ?? this.persistedState.relaySession?.macDeviceId ?? "",
       macName: preferred?.displayName ?? "",
@@ -1579,7 +1636,7 @@ function buildInitialConnectionSummary(state: PersistedState): ConnectionSummary
     return {
       phase: "idle",
       secureState: "trustedMac",
-      label: "Trusted Mac ready",
+      label: "Saved Koder host ready",
       relayUrl: trusted.relayURL ?? relaySession?.relayUrl ?? "",
       macDeviceId: trusted.macDeviceId,
       macName: trusted.displayName ?? "",
@@ -1589,7 +1646,7 @@ function buildInitialConnectionSummary(state: PersistedState): ConnectionSummary
   return {
     phase: "idle",
     secureState: relaySession ? "trustedMac" : "notPaired",
-    label: relaySession ? "Saved session ready" : "Pair a Mac to begin",
+    label: relaySession ? "Saved session ready" : "Open a live Koder host to begin",
     relayUrl: relaySession?.relayUrl ?? "",
     macDeviceId: relaySession?.macDeviceId ?? "",
     macName: "",
@@ -1609,6 +1666,20 @@ function mergeThreadPages(existing: ThreadSummary[], page: ThreadSummary[]): Thr
     byId.set(thread.id, thread);
   }
   return sortThreads(Array.from(byId.values()));
+}
+
+function defaultRelayUrlFromPage(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const host = window.location.host;
+  if (!host) {
+    return "";
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${host}/relay`;
 }
 
 function sortThreads(threads: ThreadSummary[]): ThreadSummary[] {
@@ -1839,6 +1910,48 @@ async function postJSON<T>(
         "content-type": "application/json",
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw codedError(
+        options.timeoutMessage || "The relay request timed out before the Mac responded.",
+        "request_timeout"
+      );
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw codedError(
+      readServerErrorMessage(payload, `Request failed with ${response.status}.`),
+      normalizeString(asObject(payload).code)
+    );
+  }
+
+  return payload as T;
+}
+
+async function getJSON<T>(
+  url: string,
+  options: {
+    timeoutMs?: number;
+    timeoutMessage?: string;
+  } = {}
+): Promise<T> {
+  const timeoutMs = Number.isFinite(options.timeoutMs) && Number(options.timeoutMs) > 0
+    ? Number(options.timeoutMs)
+    : HTTP_REQUEST_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "GET",
       signal: controller.signal,
     });
   } catch (error) {

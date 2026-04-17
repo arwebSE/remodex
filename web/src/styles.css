@@ -128,7 +128,7 @@ ul {
 .app-shell {
   position: relative;
   min-height: 100dvh;
-  padding: max(18px, env(safe-area-inset-top)) clamp(14px, 3vw, 24px) max(18px, env(safe-area-inset-bottom));
+  padding: max(14px, env(safe-area-inset-top)) clamp(10px, 2vw, 18px) max(14px, env(safe-area-inset-bottom));
   overflow-x: clip;
   overflow-y: auto;
 }
@@ -322,7 +322,7 @@ h1 {
 
 .workspace {
   display: grid;
-  gap: 18px;
+  gap: 12px;
   max-width: 1480px;
   margin: 0 auto;
 }
@@ -355,8 +355,8 @@ h1 {
 .rail {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px;
+  gap: 12px;
+  padding: 14px;
   min-height: 0;
   overflow: hidden;
 }
@@ -364,7 +364,7 @@ h1 {
 .hero {
   min-height: 0;
   overflow: hidden;
-  padding: 22px;
+  padding: 16px;
   background:
     linear-gradient(180deg, rgba(15, 15, 15, 0.98), rgba(8, 8, 8, 0.98)),
     radial-gradient(circle at top, rgba(159, 231, 198, 0.08), transparent 36%);
@@ -392,9 +392,9 @@ h1 {
 .scanner-card,
 .trusted-card,
 .composer {
-  padding: 18px;
+  padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -463,7 +463,7 @@ h1 {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding-right: 4px;
+  padding-right: 0;
   scrollbar-gutter: stable;
   min-width: 0;
   overscroll-behavior: contain;
@@ -472,11 +472,11 @@ h1 {
 
 .thread {
   display: grid;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 8px;
+  padding: 12px 12px;
   border: 1px solid transparent;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
   text-align: left;
   cursor: pointer;
   transition:
@@ -488,10 +488,15 @@ h1 {
 .thread-group {
   display: grid;
   gap: 8px;
-  padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.025);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.thread-group + .thread-group {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .thread-group__header {
@@ -499,6 +504,7 @@ h1 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  padding-inline: 2px;
 }
 
 .thread-group__copy {
@@ -537,7 +543,7 @@ h1 {
 
 .thread-group__list {
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .thread-group--compact {
@@ -572,7 +578,7 @@ h1 {
 
 .thread--compact {
   gap: 6px;
-  padding: 10px 4px 12px;
+  padding: 9px 2px 10px;
   border: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 0;
@@ -646,8 +652,9 @@ h1 {
 .chat-stage {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
-  gap: 16px;
-  min-height: 100%;
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
   min-width: 0;
 }
 
@@ -772,14 +779,16 @@ h1 {
 .message-pane {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 12px;
   min-height: 0;
+  height: 100%;
   overflow: auto;
-  padding-right: 6px;
+  padding-right: 0;
   scrollbar-gutter: stable;
   min-width: 0;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .message-pane__empty {
@@ -871,8 +880,9 @@ h1 {
   word-break: break-word;
   color: var(--text);
   font-size: 0.94rem;
-  max-height: 24rem;
-  overflow: auto;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .message__footer--pending {
@@ -1037,6 +1047,14 @@ h1 {
   gap: 16px;
 }
 
+.onboarding__focus--direct {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.recovery-card--direct {
+  gap: 12px;
+}
+
 .setup-card,
 .scanner-card {
   display: grid;
@@ -1178,8 +1196,8 @@ h1 {
 
 @media (max-width: 920px) {
   .app-shell {
-    padding-left: max(12px, env(safe-area-inset-left));
-    padding-right: max(12px, env(safe-area-inset-right));
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
   }
 
   .topbar {
@@ -1260,7 +1278,7 @@ h1 {
   .sidebar,
   .rail,
   .hero {
-    padding: 16px;
+    padding: 10px;
   }
 
   .sidebar--flat,
@@ -1299,10 +1317,6 @@ h1 {
   .message--assistant,
   .message--system {
     justify-self: stretch;
-  }
-
-  .message__body pre {
-    max-height: 40dvh;
   }
 
   .connection-grid,
@@ -1353,6 +1367,11 @@ h1 {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.025);
+  }
+
+  .hero--onboarding-compact .onboarding__focus--direct {
+    gap: 8px;
+    grid-template-columns: 1fr;
   }
 
   .hero--onboarding-compact .setup-card--compact,
@@ -1473,8 +1492,7 @@ h1 {
   }
 
   .thread-group {
-    padding: 9px;
-    border-radius: 18px;
+    gap: 7px;
   }
 
   .thread-group--compact {
@@ -1483,7 +1501,7 @@ h1 {
   }
 
   .thread-group--compact .thread-group__header {
-    padding: 0 4px;
+    padding: 0 2px;
   }
 
   .thread-group__copy strong {
@@ -1536,10 +1554,10 @@ h1 {
 @media (max-width: 460px) {
   .app-shell {
     padding:
-      max(10px, env(safe-area-inset-top))
-      max(8px, env(safe-area-inset-right))
-      max(10px, env(safe-area-inset-bottom))
-      max(8px, env(safe-area-inset-left));
+      max(8px, env(safe-area-inset-top))
+      max(4px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(4px, env(safe-area-inset-left));
   }
 
   .app-shell__glow--one {
@@ -1646,7 +1664,7 @@ h1 {
   }
 
   .workspace {
-    gap: 10px;
+    gap: 6px;
   }
 
   .workspace--connected {
@@ -1668,7 +1686,7 @@ h1 {
   .sidebar,
   .rail,
   .hero {
-    padding: 10px;
+    padding: 6px;
   }
 
   .sidebar__section,
@@ -1795,14 +1813,14 @@ h1 {
 
   .thread {
     gap: 7px;
-    padding: 10px 11px;
-    border-radius: 16px;
+    padding: 9px 8px;
+    border-radius: 14px;
   }
 
   .thread-group {
     gap: 7px;
-    padding: 8px;
-    border-radius: 16px;
+    padding: 0;
+    border-radius: 0;
   }
 
   .thread-group--compact {
@@ -1871,7 +1889,7 @@ h1 {
   }
 
   .message-pane {
-    gap: 10px;
+    gap: 8px;
   }
 
   .message-pane__older {
@@ -1893,8 +1911,8 @@ h1 {
 
   .message {
     gap: 8px;
-    padding: 12px 13px;
-    border-radius: 18px;
+    padding: 10px 10px;
+    border-radius: 14px;
   }
 
   .message__header,
@@ -1905,7 +1923,7 @@ h1 {
   .message__body pre {
     font-size: 0.84rem;
     line-height: 1.45;
-    max-height: 34dvh;
+    max-height: none;
   }
 
   .composer {

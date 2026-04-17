@@ -1,5 +1,4 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
-import { PairingQrScanner } from "./components/PairingQrScanner";
 import { KoderClient } from "./lib/client";
 import {
   canUseSystemNotifications,
@@ -10,13 +9,11 @@ import {
   syncAppBadge,
   type NotificationPermissionState,
 } from "./lib/pwa";
-import { parsePairingPayload } from "./lib/protocol";
 import type {
   ApprovalRequest,
   ClientSnapshot,
   ConversationMessage,
   ThreadSummary,
-  TrustedMacRecord,
 } from "./lib/types";
 
 const client = new KoderClient();
@@ -29,18 +26,12 @@ const COMPACT_THREAD_WINDOW = 18;
 const DESKTOP_THREAD_WINDOW = 24;
 
 type MobilePane = "sessions" | "chat" | "status";
-type OnboardingMode = "scanner" | "manual" | "json";
-
 function App() {
   const [snapshot, setSnapshot] = useState<ClientSnapshot>(client.getSnapshot());
-  const [relayUrl, setRelayUrl] = useState(snapshot.connection.relayUrl || preferredRelayUrlFromPage() || "ws://");
-  const [pairingCode, setPairingCode] = useState("");
-  const [pairingPayloadText, setPairingPayloadText] = useState("");
   const [composerText, setComposerText] = useState("");
   const [actionError, setActionError] = useState("");
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("sessions");
-  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>("scanner");
   const [isCompactLayout, setIsCompactLayout] = useState(readCompactLayout);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionState>(
     readNotificationPermissionState
@@ -60,12 +51,6 @@ function App() {
       setActionError(error.message);
     });
   }, []);
-
-  useEffect(() => {
-    if (!relayUrl.trim() && snapshot.connection.relayUrl) {
-      setRelayUrl(snapshot.connection.relayUrl);
-    }
-  }, [relayUrl, snapshot.connection.relayUrl]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -132,10 +117,6 @@ function App() {
   const isConnected = snapshot.connection.phase === "connected";
   const showTopbarStatus = isConnected || !isCompactLayout;
 
-  function selectOnboardingMode(mode: OnboardingMode) {
-    setOnboardingMode(mode);
-  }
-
   async function runAction(actionLabel: string, action: () => Promise<void>) {
     setActionError("");
     setActiveAction(actionLabel);
@@ -146,56 +127,6 @@ function App() {
     } finally {
       setActiveAction(null);
     }
-  }
-
-  function handlePairingCodeSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void runAction("pair-code", async () => {
-      await client.connectWithPairingCode(relayUrl, pairingCode);
-      setPairingCode("");
-    });
-  }
-
-  function handlePairingPayloadSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void runAction("pair-json", async () => {
-      const payload = parsePairingPayload(pairingPayloadText);
-      await client.connectWithPairingPayload(payload);
-      setPairingPayloadText("");
-    });
-  }
-
-  function handleQrPairing(rawValue: string) {
-    void runAction("pair-qr", async () => {
-      const trimmedValue = rawValue.trim();
-      if (!trimmedValue) {
-        throw new Error("The scanned QR payload was empty.");
-      }
-
-      if (trimmedValue.startsWith("{")) {
-        const payload = parsePairingPayload(trimmedValue);
-        const resolvedRelayUrl = preferredRelayUrlFromPage() || payload.relay;
-        const securePayload = {
-          ...payload,
-          relay: resolvedRelayUrl,
-        };
-        setRelayUrl(resolvedRelayUrl);
-        setPairingCode("");
-        setPairingPayloadText(JSON.stringify(securePayload));
-        await client.connectWithPairingPayload(securePayload);
-        setPairingPayloadText("");
-        return;
-      }
-
-      if (!relayUrl.trim()) {
-        throw new Error("The scanned QR did not include a relay URL. Enter the relay URL first, then scan again.");
-      }
-
-      setPairingPayloadText("");
-      setPairingCode(trimmedValue);
-      await client.connectWithPairingCode(relayUrl, trimmedValue);
-      setPairingCode("");
-    });
   }
 
   function handleSendSubmit(event: FormEvent<HTMLFormElement>) {
@@ -340,55 +271,6 @@ function App() {
         ) : null}
       </header>
 
-      {!isConnected && !isCompactLayout ? (
-        <section className="quick-pair card">
-          <div className="quick-pair__copy">
-            <p className="eyebrow">Quick start</p>
-            <h2>Pair this iPhone with your Mac</h2>
-            <p className="quick-pair__lede">
-              If the saved reconnect path is flaky, skip it and start from a fresh QR or code immediately.
-            </p>
-          </div>
-          <div className="quick-pair__actions">
-            <button
-              type="button"
-              className={`chip ${onboardingMode === "scanner" ? "chip--primary" : "chip--ghost"}`}
-              onClick={() => selectOnboardingMode("scanner")}
-            >
-              Scan QR
-            </button>
-            <button
-              type="button"
-              className={`chip ${onboardingMode === "manual" ? "chip--primary" : "chip--ghost"}`}
-              onClick={() => selectOnboardingMode("manual")}
-            >
-              Pair with code
-            </button>
-            <button
-              type="button"
-              className={`chip ${onboardingMode === "json" ? "chip--primary" : "chip--ghost"}`}
-              onClick={() => selectOnboardingMode("json")}
-            >
-              Paste QR JSON
-            </button>
-            {(snapshot.connection.macDeviceId || snapshot.trustedMacs.length > 0) ? (
-              <button
-                type="button"
-                className="chip chip--ghost chip--danger"
-                onClick={() => {
-                  client.forgetReconnectCandidate(snapshot.connection.macDeviceId || undefined);
-                  setPairingCode("");
-                  setPairingPayloadText("");
-                  setActionError("Saved pairing removed. Scan a fresh QR or enter a new pairing code.");
-                }}
-              >
-                Forget saved pair
-              </button>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
       {isConnected && isCompactLayout ? (
         <nav className="mobile-workspace-nav" aria-label="Workspace sections">
           <button
@@ -484,80 +366,34 @@ function App() {
               />
             </aside>
           </>
-        ) : isCompactLayout ? (
-          <section className="hero card hero--onboarding hero--onboarding-compact">
-            <OnboardingPanel
-              connection={snapshot.connection}
-              visibleError={visibleError}
-              relayUrl={relayUrl}
-              pairingCode={pairingCode}
-              pairingPayloadText={pairingPayloadText}
-              trustedMacs={snapshot.trustedMacs}
-              busyAction={activeAction}
-              selectedMode={onboardingMode}
-              isCompactLayout={isCompactLayout}
-              onSelectMode={selectOnboardingMode}
-              onRelayUrlChange={setRelayUrl}
-              onPairingCodeChange={setPairingCode}
-              onPairingPayloadChange={setPairingPayloadText}
-              onPairingCodeSubmit={handlePairingCodeSubmit}
-              onPairingPayloadSubmit={handlePairingPayloadSubmit}
-              onQrScan={handleQrPairing}
-              onRetrySavedPair={() => {
-                void runAction("restore", () => client.restoreConnection());
-              }}
-              onForgetCurrentPair={() => {
-                client.forgetReconnectCandidate(snapshot.connection.macDeviceId || undefined);
-                setPairingCode("");
-                setPairingPayloadText("");
-                setActionError("Saved pairing removed. Scan a fresh QR or enter a new pairing code.");
-              }}
-              onReconnect={(macDeviceId) => {
-                void runAction(`reconnect:${macDeviceId}`, () => client.reconnectToTrustedMac(macDeviceId));
-              }}
-              onForget={(macDeviceId) => {
-                client.forgetReconnectCandidate(macDeviceId);
-              }}
-            />
-          </section>
         ) : (
           <>
-            <section className="hero card hero--onboarding">
-              <OnboardingPanel
+            <section className={`hero card hero--onboarding ${isCompactLayout ? "hero--onboarding-compact" : ""}`}>
+              <DirectConnectPanel
                 connection={snapshot.connection}
                 visibleError={visibleError}
-                relayUrl={relayUrl}
-                pairingCode={pairingCode}
-                pairingPayloadText={pairingPayloadText}
                 trustedMacs={snapshot.trustedMacs}
                 busyAction={activeAction}
-                selectedMode={onboardingMode}
                 isCompactLayout={isCompactLayout}
-                onSelectMode={selectOnboardingMode}
-                onRelayUrlChange={setRelayUrl}
-                onPairingCodeChange={setPairingCode}
-                onPairingPayloadChange={setPairingPayloadText}
-                onPairingCodeSubmit={handlePairingCodeSubmit}
-                onPairingPayloadSubmit={handlePairingPayloadSubmit}
-                onQrScan={handleQrPairing}
-                onRetrySavedPair={() => {
+                onConnect={() => {
+                  const relayUrl = preferredRelayUrlFromPage();
+                  if (!relayUrl) {
+                    setActionError("This page does not expose a local relay host.");
+                    return;
+                  }
+                  void runAction("connect-local", () => client.connectToSelfHostedHost(relayUrl));
+                }}
+                onRetrySavedHost={() => {
                   void runAction("restore", () => client.restoreConnection());
                 }}
-                onForgetCurrentPair={() => {
+                onForgetCurrentHost={() => {
                   client.forgetReconnectCandidate(snapshot.connection.macDeviceId || undefined);
-                  setPairingCode("");
-                  setPairingPayloadText("");
-                  setActionError("Saved pairing removed. Scan a fresh QR or enter a new pairing code.");
-                }}
-                onReconnect={(macDeviceId) => {
-                  void runAction(`reconnect:${macDeviceId}`, () => client.reconnectToTrustedMac(macDeviceId));
-                }}
-                onForget={(macDeviceId) => {
-                  client.forgetReconnectCandidate(macDeviceId);
+                  setActionError("Saved host removed. Reconnect directly to this self-hosted Koder instance.");
                 }}
               />
             </section>
 
+            {!isCompactLayout ? (
             <aside className="rail card rail--support">
               <StatusRail
                 snapshot={snapshot}
@@ -570,6 +406,7 @@ function App() {
                 onClearError={() => setActionError("")}
               />
             </aside>
+            ) : null}
           </>
         )}
       </main>
@@ -981,7 +818,7 @@ function StatusRail(props: {
           </article>
         </div>
         <p className="rail__hint">
-          Installed Home Screen mode is what unlocks iPhone web-push later. Right now the PWA can already raise local system alerts while a live session is connected.
+          Installed mode is what unlocks stronger PWA behavior later. Right now the browser can already raise local system alerts while a live session is connected.
         </p>
         {props.canUseNotifications && props.notificationPermission !== "granted" ? (
           <button
@@ -998,14 +835,14 @@ function StatusRail(props: {
       <section className="rail__panel">
         <div className="card__header">
           <div>
-            <p className="eyebrow">Pairing</p>
-            <h2>Phone flow</h2>
+            <p className="eyebrow">Access</p>
+            <h2>Local host flow</h2>
           </div>
         </div>
         <ul className="bullet-list">
           <li>Run <code>./run-local-koder.sh --hostname &lt;your-mac-ip&gt;</code> on the Mac.</li>
-          <li>Scan the QR first. Koder now rewrites that pairing onto the secure relay origin used by the page.</li>
-          <li>Reconnect later from the saved trusted Mac card instead of pairing again.</li>
+          <li>Open this PWA from that same host or IP and Koder attaches directly to the live bridge.</li>
+          <li>Everything stays self-hosted. There is no hosted cloud or QR-first onboarding path anymore.</li>
         </ul>
       </section>
 
@@ -1027,248 +864,94 @@ function StatusRail(props: {
   );
 }
 
-function OnboardingPanel(props: {
+function DirectConnectPanel(props: {
   connection: ClientSnapshot["connection"];
   visibleError: string;
-  relayUrl: string;
-  pairingCode: string;
-  pairingPayloadText: string;
-  trustedMacs: TrustedMacRecord[];
+  trustedMacs: ClientSnapshot["trustedMacs"];
   busyAction: string | null;
-  selectedMode: OnboardingMode;
   isCompactLayout: boolean;
-  onSelectMode: (mode: OnboardingMode) => void;
-  onRelayUrlChange: (value: string) => void;
-  onPairingCodeChange: (value: string) => void;
-  onPairingPayloadChange: (value: string) => void;
-  onPairingCodeSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onPairingPayloadSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onQrScan: (value: string) => void;
-  onRetrySavedPair: () => void;
-  onForgetCurrentPair: () => void;
-  onReconnect: (macDeviceId: string) => void;
-  onForget: (macDeviceId: string) => void;
+  onConnect: () => void;
+  onRetrySavedHost: () => void;
+  onForgetCurrentHost: () => void;
 }) {
-  const hasRecoveryState = Boolean(
-    props.connection.macDeviceId
-      || props.trustedMacs.length
-      || props.connection.phase === "connecting"
-      || props.connection.phase === "restoring"
-      || props.connection.phase === "error"
-      || props.visibleError
-  );
-
-  const scannerCard = (
-    <div className={`scanner-card ${props.isCompactLayout ? "scanner-card--compact" : ""}`}>
-      <PairingQrScanner
-        compact={props.isCompactLayout}
-        disabled={props.busyAction === "pair-code" || props.busyAction === "pair-json" || props.busyAction === "pair-qr"}
-        onScan={props.onQrScan}
-      />
-    </div>
-  );
-
-  const manualCard = (
-    <form className={`setup-card ${props.isCompactLayout ? "setup-card--compact" : ""}`} onSubmit={props.onPairingCodeSubmit}>
-      <div className="setup-card__header">
-        <p className="eyebrow">Manual</p>
-        <h3>{props.isCompactLayout ? "Use relay URL and code" : "Pair with code"}</h3>
-      </div>
-      <label className="field">
-        <span>Relay URL</span>
-        <input
-          value={props.relayUrl}
-          onChange={(event) => props.onRelayUrlChange(event.target.value)}
-          placeholder="wss://192.168.1.10:5173/relay"
-        />
-      </label>
-      <label className="field">
-        <span>Pairing code</span>
-        <input
-          value={props.pairingCode}
-          onChange={(event) => props.onPairingCodeChange(event.target.value)}
-          placeholder="RMX1:ABC123..."
-        />
-      </label>
-      <button
-        type="submit"
-        className="chip chip--primary chip--stretch"
-        disabled={!props.relayUrl.trim() || !props.pairingCode.trim() || props.busyAction === "pair-code"}
-      >
-        Connect to Mac
-      </button>
-    </form>
-  );
-
-  const jsonCard = (
-    <form className={`setup-card ${props.isCompactLayout ? "setup-card--compact" : ""}`} onSubmit={props.onPairingPayloadSubmit}>
-      <div className="setup-card__header">
-        <p className="eyebrow">Fallback</p>
-        <h3>{props.isCompactLayout ? "Paste the QR JSON" : "Paste QR payload JSON"}</h3>
-      </div>
-      <label className="field">
-        <span>Pairing payload</span>
-        <textarea
-          value={props.pairingPayloadText}
-          onChange={(event) => props.onPairingPayloadChange(event.target.value)}
-          placeholder='{"v":2,"relay":"wss://.../relay","sessionId":"..."}'
-        />
-      </label>
-      <button
-        type="submit"
-        className="chip chip--ghost chip--stretch"
-        disabled={!props.pairingPayloadText.trim() || props.busyAction === "pair-json"}
-      >
-        Use QR payload
-      </button>
-    </form>
-  );
+  const localRelayHost = compactRelayLabel(preferredRelayUrlFromPage());
+  const savedHostLabel = props.connection.macName || props.connection.macDeviceId || "None yet";
+  const isWorking = props.connection.phase === "connecting" || props.connection.phase === "restoring";
 
   return (
-    <div className="onboarding">
+    <div className="onboarding onboarding--direct">
       <div className="hero__header">
         <div>
-          {!props.isCompactLayout ? <p className="eyebrow">Onboarding</p> : null}
-          <h2>{props.isCompactLayout ? "Pair this iPhone with your Mac" : "Pair this browser with your self-hosted Mac."}</h2>
+          {!props.isCompactLayout ? <p className="eyebrow">Self-hosted access</p> : null}
+          <h2>{props.isCompactLayout ? "Connect to this Koder host" : "Connect directly to this self-hosted Koder host."}</h2>
         </div>
-        {!props.isCompactLayout ? <span className="pill">QR pairing</span> : null}
+        {!props.isCompactLayout ? <span className="pill">Local only</span> : null}
       </div>
 
       <p className="hero__lede">
-        {props.isCompactLayout
-          ? "Scan the Mac QR first, or switch to code or JSON if the saved path is bad."
-          : (
-            <>
-              Use the advertised relay URL and short pairing code printed by <code>./run-local-koder.sh</code>.
-              The browser stores its own device key locally, then reconnects through the trusted-session flow.
-            </>
-          )}
+        Open the PWA from the same host or IP that is running <code>./run-local-koder.sh</code>. This browser now attaches straight to the live machine session on that host, without any QR, code, or legacy iOS pairing flow.
       </p>
 
-      <div className="onboarding-mode-switch" role="tablist" aria-label="Pairing mode">
-        <button
-          type="button"
-          className={`chip ${props.selectedMode === "scanner" ? "chip--primary" : "chip--ghost"}`}
-          onClick={() => props.onSelectMode("scanner")}
-        >
-          {props.isCompactLayout ? "Scan" : "Scan QR"}
-        </button>
-        <button
-          type="button"
-          className={`chip ${props.selectedMode === "manual" ? "chip--primary" : "chip--ghost"}`}
-          onClick={() => props.onSelectMode("manual")}
-        >
-          {props.isCompactLayout ? "Code" : "Pair with code"}
-        </button>
-        <button
-          type="button"
-          className={`chip ${props.selectedMode === "json" ? "chip--primary" : "chip--ghost"}`}
-          onClick={() => props.onSelectMode("json")}
-        >
-          {props.isCompactLayout ? "JSON" : "Paste QR JSON"}
-        </button>
+      <div className="onboarding__focus onboarding__focus--direct">
+        <article className="connection-tile">
+          <span>Current host</span>
+          <strong>{localRelayHost || "Unavailable"}</strong>
+        </article>
+        <article className="connection-tile">
+          <span>Saved host</span>
+          <strong>{savedHostLabel}</strong>
+        </article>
+        <article className="connection-tile">
+          <span>Known hosts</span>
+          <strong>{props.trustedMacs.length}</strong>
+        </article>
       </div>
 
-      {hasRecoveryState ? (
-        <section className={`recovery-card ${props.isCompactLayout ? "recovery-card--compact" : ""}`}>
-          <div className="recovery-card__header">
-            <div>
-              <p className="eyebrow">{props.isCompactLayout ? "Saved pair" : "Recovery"}</p>
-              <h3>{props.isCompactLayout ? "Reconnect or reset" : recoveryTitle(props.connection)}</h3>
-            </div>
-            <span className={`pill ${props.connection.phase === "error" ? "pill--warn" : ""}`}>
-              {props.connection.phase}
-            </span>
+      <div className="recovery-card recovery-card--compact recovery-card--direct">
+        <div className="recovery-card__header">
+          <div>
+            <p className="eyebrow">Status</p>
+            <h3>{props.connection.label}</h3>
           </div>
+          <span className={`pill ${props.connection.phase === "error" ? "pill--warn" : ""}`}>
+            {props.connection.phase}
+          </span>
+        </div>
 
-          <p className="recovery-card__copy">
-            {props.visibleError
-              || recoveryCopy(props.connection)}
-          </p>
+        <p className="recovery-card__copy">
+          {props.visibleError || (isWorking
+            ? "Koder is trying to attach to the live bridge on this host."
+            : "Tap connect to attach this browser directly to the live self-hosted Koder session on this host.")}
+        </p>
 
-          <div className="recovery-card__meta">
-            <article className="connection-tile">
-              <span>Saved Mac</span>
-              <strong>{props.connection.macName || props.connection.macDeviceId || "Unknown"}</strong>
-            </article>
-            <article className="connection-tile">
-              <span>Relay</span>
-              <strong>{compactRelayLabel(props.connection.relayUrl) || "No relay saved"}</strong>
-            </article>
-          </div>
-
-          <div className="recovery-card__actions">
-            <button
-              type="button"
-              className="chip chip--primary"
-              disabled={props.busyAction === "restore"}
-              onClick={props.onRetrySavedPair}
-            >
-              {props.isCompactLayout ? "Reconnect" : "Try reconnect"}
-            </button>
-            <button
-              type="button"
-              className="chip chip--ghost"
-              onClick={() => props.onSelectMode("scanner")}
-            >
-              {props.isCompactLayout ? "New QR" : "Scan QR again"}
-            </button>
+        <div className="recovery-card__actions">
+          <button
+            type="button"
+            className="chip chip--primary"
+            disabled={props.busyAction === "connect-local" || isWorking}
+            onClick={props.onConnect}
+          >
+            {props.connection.phase === "error" ? "Retry connect" : "Connect"}
+          </button>
+          <button
+            type="button"
+            className="chip chip--ghost"
+            disabled={props.busyAction === "restore" || isWorking}
+            onClick={props.onRetrySavedHost}
+          >
+            Retry saved host
+          </button>
+          {(props.connection.macDeviceId || props.trustedMacs.length > 0) ? (
             <button
               type="button"
               className="chip chip--ghost chip--danger"
-              onClick={props.onForgetCurrentPair}
+              onClick={props.onForgetCurrentHost}
             >
-              {props.isCompactLayout ? "Forget" : "Forget saved pair"}
+              Forget saved host
             </button>
-          </div>
-        </section>
-      ) : null}
-
-      <div className="onboarding__focus">
-        {props.selectedMode === "scanner" ? scannerCard : null}
-        {props.selectedMode === "manual" ? manualCard : null}
-        {props.selectedMode === "json" ? jsonCard : null}
-      </div>
-
-      {props.trustedMacs.length > 0 ? (
-        <section className="trusted-grid">
-        <div className="card__header">
-          <div>
-            <p className="eyebrow">Reconnect</p>
-            <h2>Trusted Macs</h2>
-          </div>
+          ) : null}
         </div>
-
-        {props.trustedMacs.length === 0 ? (
-          <p className="sidebar__empty">No trusted Macs yet. Complete one pairing first.</p>
-        ) : null}
-        {props.trustedMacs.map((mac) => (
-          <article key={mac.macDeviceId} className="trusted-card">
-            <div>
-              <strong>{mac.displayName || mac.macDeviceId.slice(0, 8)}</strong>
-              <span>{mac.relayURL || "No relay URL saved"}</span>
-            </div>
-            <div className="trusted-card__actions">
-              <button
-                type="button"
-                className="chip chip--primary"
-                disabled={!mac.relayURL || props.busyAction === `reconnect:${mac.macDeviceId}`}
-                onClick={() => props.onReconnect(mac.macDeviceId)}
-              >
-                Reconnect
-              </button>
-              <button
-                type="button"
-                className="chip chip--ghost"
-                onClick={() => props.onForget(mac.macDeviceId)}
-              >
-                Forget
-              </button>
-            </div>
-          </article>
-        ))}
-      </section>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -1334,7 +1017,7 @@ function connectionSubline(snapshot: ClientSnapshot): string {
   if (snapshot.connection.macName && relayHost) {
     return `${snapshot.connection.macName} · ${relayHost}`;
   }
-  return snapshot.connection.macName || relayHost || "No relay paired yet";
+  return snapshot.connection.macName || relayHost || "No live host connected yet";
 }
 
 function statusTone(phase: ClientSnapshot["connection"]["phase"]): "good" | "warn" | "neutral" | "bad" {
@@ -1349,29 +1032,6 @@ function statusTone(phase: ClientSnapshot["connection"]["phase"]): "good" | "war
     default:
       return "neutral";
   }
-}
-
-function recoveryTitle(connection: ClientSnapshot["connection"]): string {
-  if (connection.phase === "error") {
-    return "This saved pair needs intervention.";
-  }
-  if (connection.phase === "connecting" || connection.phase === "restoring") {
-    return "Trusted reconnect is taking too long.";
-  }
-  if (connection.secureState === "trustedMac") {
-    return "A saved trusted Mac is ready.";
-  }
-  return "Use a fresh pairing if reconnect is unreliable.";
-}
-
-function recoveryCopy(connection: ClientSnapshot["connection"]): string {
-  if (connection.phase === "error") {
-    return "The saved trust record failed. Reconnect once if you expect a transient network issue, otherwise forget it and scan a fresh QR.";
-  }
-  if (connection.phase === "connecting" || connection.phase === "restoring") {
-    return "The browser should not sit here indefinitely anymore. If this reconnect still hangs, skip the old trust record and pair from a fresh QR now.";
-  }
-  return "Saved trusted-Mac reconnect is meant to be convenient, not mandatory. A fresh QR pairing should always be one tap away.";
 }
 
 function preferredRelayUrlFromPage(): string {
