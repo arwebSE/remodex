@@ -18,6 +18,7 @@ function readHttpsConfig() {
 
 const https = readHttpsConfig();
 const relayProxyTarget = process.env.KODER_RELAY_PROXY_TARGET?.trim();
+const disableHmr = process.env.KODER_DISABLE_HMR?.trim().toLowerCase() === "true";
 const proxy = relayProxyTarget
   ? {
       "/relay": {
@@ -43,6 +44,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     https,
+    hmr: disableHmr ? false : undefined,
     proxy
   },
   preview: {

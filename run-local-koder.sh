@@ -143,6 +143,8 @@ start_web() {
     export KODER_HTTPS_KEY_PATH="${WEB_CERT_KEY}"
     export KODER_HTTPS_CERT_PATH="${WEB_CERT_CERT}"
     export KODER_RELAY_PROXY_TARGET="http://127.0.0.1:${RELAY_PORT}"
+    export KODER_DISABLE_HMR="true"
+    export VITE_KODER_ENABLE_SW="false"
     npm run dev -- --host 0.0.0.0 --port "${WEB_PORT}" --strictPort
   ) >"${WEB_LOG_FILE}" 2>&1 &
   WEB_PID=$!
